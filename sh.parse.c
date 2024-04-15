@@ -205,7 +205,6 @@ freenod(struct wordent *p1, struct wordent *p2)
 struct command *
 syntax(const struct wordent *p1, const struct wordent *p2, int flags)
 {
-
     while (p1 != p2)
 	if (any(intty ? ";&\n#" : ";&\n", p1->word[0]))
 	    p1 = p1->next;
@@ -281,11 +280,13 @@ syn0(const struct wordent *p1, const struct wordent *p2, int flags)
 		p1 = p1->prev = p1->prev->prev;
 		xfree(p1->next->word);
 		xfree(p1->next);
-		p = p1->next = p2->prev;
+		p1->next = p2->prev;
+		goto out;
 	    }
 	default:
 	    break;
 	}
+out:
     if (l == 0)
 	return (syn1(p1, p2, flags));
     seterror(ERR_TOOMANYLP);
