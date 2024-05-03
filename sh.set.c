@@ -254,10 +254,19 @@ doset(Char **v, struct command *c)
     v++;
     do {
 	changed = 0;
+	if (*v && eq(*v, STRmw)) {
+	    if (flags & VAR_READONLY)
+		stderror(ERR_RWANDRO);
+	    flags = VAR_RWONLY;
+	    v++;
+	    changed = 1;
+	}
 	/*
 	 * Readonly addition From: Tim P. Starrin <noid@cyborg.larc.nasa.gov>
 	 */
 	if (*v && eq(*v, STRmr)) {
+	    if (flags & VAR_RWONLY)
+		stderror(ERR_RWANDRO);
 	    flags = VAR_READONLY;
 	    v++;
 	    changed = 1;
@@ -649,6 +658,12 @@ void
 set1(const Char *var, Char **vec, struct varent *head, int flags)
 {
     Char **oldv = vec;
+    struct varent *vp;
+
+    if ((flags & VAR_READONLY) &&
+	(vp = adrof(var)) != NULL &&
+	(vp->v_flags & VAR_RWONLY))
+	stderror(ERR_READWRITE, vp->v_name);
 
     if ((flags & VAR_NOGLOB) == 0) {
 	int gflag;
@@ -726,11 +741,8 @@ setq(const Char *name, Char **vec, struct varent *p, int flags)
     while ((c = p->v_link[f]) != 0) {
 	if ((f = *name - *c->v_name) == 0 &&
 	    (f = Strcmp(name, c->v_name)) == 0) {
-	    if (c->v_flags & VAR_READONLY) {
-		if (flags & VAR_NOERROR)
-		    return;
+	    if (c->v_flags & VAR_READONLY)
 		stderror(ERR_READONLY|ERR_NAME, c->v_name);
-	    }
 	    blkfree(c->vec);
 	    c->v_flags = flags;
 	    trim(c->vec = vec);
@@ -1357,13 +1369,13 @@ update_wordchars(void)
 void
 setstrstatus(Char *str)
 {
-	setv(STRstatus, str, VAR_READWRITE|VAR_NOERROR);
+	setv(STRstatus, str, VAR_READWRITE|VAR_RWONLY);
 }
 
 void
 setstatus(int n)
 {
-	setcopy(STRstatus, n ? STR1 : STR0, VAR_READWRITE|VAR_NOERROR);
+	setcopy(STRstatus, n ? STR1 : STR0, VAR_READWRITE|VAR_RWONLY);
 }
 
 int

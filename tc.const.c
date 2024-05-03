@@ -111,6 +111,7 @@ Char STRmh[]		= { '-', 'h', '\0' };
 Char STRmhT[]		= { '-', 'h', 'T', '\0' };
 Char STRmm[]		= { '-', 'm', '\0' };
 Char STRmr[]		= { '-', 'r', '\0' };
+Char STRmw[]		= { '-', 'w', '\0' };
 Char STRmerge[]		= { 'm', 'e', 'r', 'g', 'e', '\0' };
 Char STRlock[]		= { 'l', 'o', 'c', 'k', '\0' };
 Char STRtildothist[]	= { '~', '/', '.', 'h', 'i', 's', 't', 'o', 'r',
