@@ -869,7 +869,7 @@ doio(struct command *t, int *pipein, int *pipeout)
 	}
 	else if (flags & F_PIPEIN) {
 	    xclose(0);
-	    OLDSTD = dmove(pipein[0], 0);
+	    (void) dmove(pipein[0], 0);
 	    xclose(pipein[1]);
 	}
 	else if ((flags & F_NOINTERRUPT) && tpgrp == -1) {
@@ -931,7 +931,7 @@ doio(struct command *t, int *pipein, int *pipeout)
     }
     else if (flags & F_PIPEOUT) {
 	xclose(1);
-	SHOUT = dcopy(pipeout[1], 1);
+	(void) dcopy(pipeout[1], 1);
 	is1atty = 0;
     }
     else {
@@ -945,7 +945,7 @@ doio(struct command *t, int *pipein, int *pipeout)
 
     xclose(2);
     if (flags & F_STDERR) {
-	SHDIAG = dcopy(1, 2);
+	(void) dcopy(1, 2);
 	is2atty = is1atty;
     }
     else {
