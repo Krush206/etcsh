@@ -403,9 +403,12 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		}
 
 		pid = pfork(t, wanttty);
-		if (pid == 0 && nosigchld) {
-		    sigprocmask(SIG_SETMASK, &csigset, NULL);
-		    nosigchld = 0;
+		if (pid == 0) {
+		    intty = 0;
+		    if (nosigchld) {
+			sigprocmask(SIG_SETMASK, &csigset, NULL);
+			nosigchld = 0;
+		    }
 		}
 		else if (pid != 0 && (t->t_dflg & F_AMPERSAND))
 		    backpid = pid;
@@ -653,18 +656,34 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	    } else {
 		jmp_buf_t oldexit;
 		int ohaderr = haderr;
+		static void (*last)(Char **, struct command *);
 
+		last = bifunc->bfunct;
 		getexit(oldexit);
 		if (setexit() == 0)
 		    func(t, bifunc);
 		resexit(oldexit);
-		haderr = ohaderr;
 
 		if (adrof(STRprintexitvalue)) {
 		    int rv = getstatus();
 		    if (rv != 0)
 			xprintf(CGETS(17, 2, "Exit %d\n"), rv);
 		}
+		if (last == doexit) {
+		    if (doneinp)
+			reset();
+		    if (!haderr) {
+			btoeof();
+			doneinp = 1;
+			if (!insource) {
+			    xclose(SHIN);
+			    SHIN = -1;
+			}
+			reset();
+		    }
+		    last = NULL;
+		}
+		haderr = ohaderr;
 	    }
 	    break;
 	}

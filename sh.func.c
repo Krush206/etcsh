@@ -497,19 +497,8 @@ doexit(Char **v, struct command *c)
 	if (*v)
 	    stderror(ERR_NAME | ERR_EXPRESSION);
     }
-    btoeof();
-
-    /* Always close, except in the context of
-     * dosource or dofunction.
-     * st_restore will handle. */
-    switch (insource) {
-    case 0:
-	xclose(SHIN);
-	SHIN = -1;
-	break;
-    case 2:
-	fdecl += Strlen(fdecl);
-    }
+    /* The final behavior
+     * should be handled in execute. */
 }
 
 /*ARGSUSED*/
