@@ -1343,4 +1343,6 @@ extern int flvl, /* Level of nesting or recursion used
 extern Char *fdecl; /* Pointer to function declaration
 		     * used by dofunction. */
 
+#define QUOTES (_QB|_QF|_ESC) /* \ " ' ` */
+
 #endif /* _h_sh */
