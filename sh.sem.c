@@ -311,6 +311,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		    bifunc->bfunct != (bfunc_t)doswbrk	&&
 		    bifunc->bfunct != (bfunc_t)doswitch	&&
 		    bifunc->bfunct != (bfunc_t)dowhile	&&
+		    bifunc->bfunct != (bfunc_t)dotest	&&
 		    bifunc->bfunct != (bfunc_t)dozip)
 		    break;
 	    }

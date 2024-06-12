@@ -504,6 +504,7 @@ again:
 	case TC_SET:
 	case TC_SWITCH:
 	case TC_WHILE:
+	case TC_TEST:
 	    specp = 1;
 	    break;
 	default:

@@ -2843,3 +2843,12 @@ dofunction(Char **v, struct command *c)
 	}
     }
 }
+
+void
+dotest(Char **v, struct command *c)
+{
+    USE(c);
+
+    v++;
+    setstatus(!expr(&v));
+}

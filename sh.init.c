@@ -150,6 +150,8 @@ const struct biltins bfunc[] = {
 #ifndef WINNT_NATIVE
     { "termname",	dotermname,	0,  	1       },
 #endif
+    { "test",		dotest,		1,	INF	},
+    { "then",		dozip,		0,	0	},
     { "time",		dotime,		0,	INF	},
 #if defined(_CX_UX)
     { "ucb",		doucb,		0,	INF	},
@@ -199,6 +201,8 @@ struct srch srchn[] = {
     { "label",		TC_LABEL	},
     { "set",		TC_SET		},
     { "switch",		TC_SWITCH	},
+    { "test",		TC_TEST		},
+    { "then",		TC_THEN,	},
     { "while",		TC_WHILE	}
 };
 int nsrchn = sizeof srchn / sizeof *srchn;
