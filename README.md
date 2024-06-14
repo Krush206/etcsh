@@ -1,26 +1,16 @@
-# TCSH
+# etcsh
 
-*C shell with file name completion and command line editing*
+etcsh is a project envisioning enhancements and fixes over the original tcsh.
 
-The Tcsh source code is available on GitHub as a read-only repo
-mirror at:
+Notable features over the original tcsh are
+* function declarations;
+* read to variables from pipes and redirections;
+* comments on interactive sessions;
+* tell whether stdin is empty or not;
+* variable expansion on expressions corrected;
+* piped built-ins are forked;
+* missing test built-in implemented;
+* read-write variable flag;
+* exit shall cancel lists.
 
-> https://github.com/tcsh-org/tcsh
-
-Instructions for compiling Tcsh can be found in [BUILDING].
-
-PLEASE file any bug reports, fixes, and code for new features at:
-
-> https://bugs.astron.com/
-
-Comments, questions, etc. (even flames) are welcome via email to
-the tcsh mailing list:
-
-> tcsh@astron.com  
-> https://mailman.astron.com/mailman/listinfo/tcsh
-
-[![Coverity Scan][badge]][coverity]
-
-[BUILDING]: BUILDING
-[badge]: https://scan.coverity.com/projects/20307/badge.svg
-[coverity]: https://scan.coverity.com/projects/tcsh-org-tcsh
+More is to come. Feedbacks and contributions are much appreciated.
