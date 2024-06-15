@@ -1674,6 +1674,8 @@ panystop(int neednl)
 {
     struct process *pp;
 
+    if (!intty || insource)
+	return;
     chkstop = 2;
     for (pp = proclist.p_next; pp; pp = pp->p_next)
 	if (pp->p_flags & PSTOPPED)
