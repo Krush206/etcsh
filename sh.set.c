@@ -701,7 +701,7 @@ set1(const Char *var, Char **vec, struct varent *head, int flags)
     if ((flags & VAR_READONLY) &&
 	(vp = adrof(var)) != NULL &&
 	(vp->v_flags & VAR_RWONLY))
-	stderror(ERR_READWRITE, vp->v_name);
+	stderror(ERR_NAME | ERR_READWRITE, vp->v_name);
 
     if ((flags & VAR_NOGLOB) == 0) {
 	int gflag;
