@@ -447,15 +447,14 @@ Dgetdol(void)
 
     case '<'|QUOTE: {
 	static struct Strbuf wbuf; /* = Strbuf_INIT; */
-	static Char peekc;
+	static Char peekc[2];
 
 	if (bitset) {
-	    if (isatty(OLDSTD) || peekc)
+	    if (isatty(OLDSTD) || *peekc)
 		setDolp(STR0);
-	    else if (force_read(OLDSTD, &c, 1) > 0) {
-		peekc = c;
+	    else if (force_read(OLDSTD, peekc, 1) > 0)
 		setDolp(STR0);
-	    } else
+	    else
 		setDolp(STR1);
 	    cleanup_until(name);
 	    goto eatbrac;
@@ -519,13 +518,9 @@ Dgetdol(void)
 	}
 
 	fixDolMod();
-	if (peekc) {
-	    Char (*peekla)[2];
-
-	    **(peekla = xcalloc(1, sizeof *peekla)) =
-	    peekc;
-	    addla(*peekla);
-	    peekc = 0;
+	if (*peekc) {
+	    addla(Strsave(peekc));
+	    *peekc = 0;
 	}
 	setDolp(wbuf.s); /* Kept allocated until next $< expansion */
 	cleanup_until(name);
