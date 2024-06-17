@@ -501,8 +501,15 @@ doexit(Char **v, struct command *c)
 	if (*v)
 	    stderror(ERR_NAME | ERR_EXPRESSION);
     }
-    /* The final behavior
-     * should be handled in execute. */
+    btoeof();
+    /* Always close, except in the context of
+     * dosource or dofunction.
+     * st_restore will handle. */
+    if (!insource) {
+	xclose(SHIN);
+	SHIN = -1;
+    }
+    doneinp = 1;
 }
 
 /*ARGSUSED*/

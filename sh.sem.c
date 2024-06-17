@@ -649,20 +649,9 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		    if (rv != 0)
 			xprintf(CGETS(17, 2, "Exit %d\n"), rv);
 		}
-		if (last == doexit) {
-		    if (doneinp)
-			reset();
-		    if (!haderr) {
-			btoeof();
-			doneinp = 1;
-			if (!insource) {
-			    xclose(SHIN);
-			    SHIN = -1;
-			}
-			reset();
-		    }
-		    last = NULL;
-		}
+		if (last == doexit && !haderr)
+		    reset();
+		last = NULL;
 		haderr = ohaderr;
 	    }
 	    break;
