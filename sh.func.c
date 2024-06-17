@@ -62,6 +62,8 @@ static	void	toend		(void);
 static	void	xecho		(int, Char **);
 static	int	islocale_var	(Char *);
 static	void	wpfree		(struct whyle *);
+static	void	fn_save		(struct saved_state *, int[2], Char **, Char *);
+static	void	fn_restore	(void *);
 
 const struct biltins *
 isbfunc(struct command *t)
@@ -2745,8 +2747,8 @@ getYN(const char *prompt)
     return doit;
 }
 
-int flvl,
-    fpipe = -1;
+static int flvl;
+int fpipe = -1;
 Char *fdecl;
 
 void
@@ -2774,10 +2776,8 @@ dofunction(Char **v, struct command *c)
 	    if (flvl == 100)
 		stderror(ERR_RECURSION);
 	    mypipe(pv);
-	    cleanup_push(&st, st_restore);
-	    st_save(&st, pv[0], 0, &fdecl, v);
-	    fpipe = pv[1];
-	    fdecl = *varp->vec;
+	    cleanup_push(&st, fn_restore);
+	    fn_save(&st, pv, v, *varp->vec);
 	    process(0);
 	    cleanup_until(&st);
 
@@ -2866,6 +2866,30 @@ dofunction(Char **v, struct command *c)
 	    tw_cmd_free();
 	}
     }
+}
+
+static void
+fn_save(struct saved_state *st, int pv[2], Char **av, Char *decl)
+{
+    st_save(st, pv[0], 0, NULL, av);
+    st->fn.pipe = fpipe;
+    st->fn.decl = fdecl;
+    fpipe = pv[1];
+    fdecl = decl;
+    flvl++;
+    insource = 2;
+}
+
+static void
+fn_restore(void *xst)
+{
+    struct saved_state *st;
+
+    st_restore(xst);
+    xclose(fpipe);
+    fpipe = (st = xst)->fn.pipe;
+    fdecl = st->fn.decl;
+    flvl--;
 }
 
 void

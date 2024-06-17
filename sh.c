@@ -1627,21 +1627,12 @@ st_save(struct saved_state *st, int unit, int hflg, Char **al, Char **av)
     gointr	= 0;
     evalvec	= 0;
     evalp	= 0;
+    alvec	= al;
     alvecp	= 0;
     enterhist	= hflg;
     if (enterhist)
 	HIST	= '\0';
-    if (al == &fdecl) {
-	alvec	= NULL;
-	insource = 2;
-	st->fpipe = fpipe;
-	st->fdecl = *al;
-	flvl++;
-    }
-    else {
-	alvec	= al;
-	insource = 1;
-    }
+    insource	= 1;
 }
 
 
@@ -1673,12 +1664,6 @@ st_restore(void *xst)
 
     xclose(SHIN);
 
-    if (insource == 2) {
-	xclose(fpipe);
-	fpipe = st->fpipe;
-	fdecl = st->fdecl;
-	flvl--;
-    }
     insource	= st->insource;
     SHIN	= st->SHIN;
     if (st->OLDSTD != -1)

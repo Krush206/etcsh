@@ -1294,8 +1294,10 @@ struct saved_state {
     int	  cantell;
     struct Bin	  B;
     int		  justpr;
-    int		fpipe;
-    Char	*fdecl;
+    struct {
+	int pipe;
+	Char *decl;
+    } fn;
 };
 
 #include "sh.decls.h"
@@ -1337,9 +1339,7 @@ struct saved_state {
 #define TEXP_IGNORE 1	/* in ignore, it means to ignore value, just parse */
 #define TEXP_NOGLOB 2	/* in ignore, it means not to globone */
 
-extern int flvl, /* Level of nesting or recursion used
-		  * used by dofunction. */
-	   fpipe; /* Write end of a pipe used by dofunction. */
+extern int fpipe; /* Write end of a pipe used by dofunction. */
 extern Char *fdecl; /* Pointer to function declaration
 		     * used by dofunction. */
 
