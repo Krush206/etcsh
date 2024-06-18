@@ -581,15 +581,7 @@ exp6(Char ***vp, int ignore)
     }
     if (eq(**vp, STRLbrace)) {
 	Char **v;
-	struct command faket;
-	Char   *fakecom[2];
 
-	faket.t_dtyp = NODE_COMMAND;
-	faket.t_dflg = F_BACKQ;
-	faket.t_dcar = faket.t_dcdr = faket.t_dspr = NULL;
-	faket.t_dcom = fakecom;
-	fakecom[0] = STRfakecom;
-	fakecom[1] = NULL;
 	(*vp)++;
 	v = *vp;
 	for (;;) {
@@ -600,15 +592,10 @@ exp6(Char ***vp, int ignore)
 	}
 	if (ignore & TEXP_IGNORE)
 	    return (Strsave(STRNULL));
-	psavejob();
-	cleanup_push(&faket, psavejob_cleanup); /* faket is only a marker */
-	if (pfork(&faket, -1) == 0) {
-	    *--(*vp) = 0;
-	    evalav(v);
-	    exitstat();
-	}
-	pwait();
-	cleanup_until(&faket);
+	cp = *--(*vp);
+	**vp = NULL;
+	evalav(v);
+	*(*vp)++ = cp;
 	etraci("exp6 {} status", getstatus(), vp);
 	return putn(getstatus() == 0);
     }
@@ -1011,11 +998,14 @@ evalav(Char **v)
     hp->prev = wdp;
     cleanup_push(&paraml1, lex_cleanup);
     alias(&paraml1);
-    t = syntax(paraml1.next, &paraml1, 0);
+    (t = xcalloc(1, sizeof *t))->t_dtyp = NODE_PAREN;
+    t->t_dspr = syntax(paraml1.next, &paraml1, 0);
     cleanup_push(t, syntax_cleanup);
     if (seterr)
 	stderror(ERR_OLD);
-    execute(t, -1, NULL, NULL, TRUE);
+    if (t->t_dspr != NULL)
+	execute(t, -1, NULL, NULL, TRUE);
+    cleanup_until(t);
     cleanup_until(&paraml1);
 }
 
