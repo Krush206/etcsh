@@ -394,14 +394,37 @@ doif(Char **v, struct command *kp)
 void
 reexecute(struct command *kp)
 {
-    kp->t_dflg &= F_SAVE;
-    kp->t_dflg |= F_REPEAT;
+    Char **v;
+    struct command *t;
+    struct wordent paraml, *hp, *wdp;
+
+    initlex(hp = wdp = &paraml);
+    v = kp->t_dcom;
+    while (*v) {
+	struct wordent *new;
+
+	(new = xcalloc(1, sizeof *new))->prev = wdp;
+	new->next = hp;
+	wdp->next = new;
+	wdp = new;
+	wdp->word = Strsave(*v++);
+    }
+    hp->prev = wdp;
+    cleanup_push(&paraml, lex_cleanup);
+    alias(&paraml);
+    t = syntax(paraml.next, &paraml, 0);
+    cleanup_push(t, syntax_cleanup);
+    if (seterr)
+	stderror(ERR_OLD);
+    t->t_dflg = (kp->t_dflg & F_SAVE) | F_REPEAT;
     /*
      * If tty is still ours to arbitrate, arbitrate it; otherwise dont even set
      * pgrp's as the jobs would then have no way to get the tty (we can't give
      * it to them, and our parent wouldn't know their pgrp, etc.
      */
-    execute(kp, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
+    execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
+    cleanup_until(t);
+    cleanup_until(&paraml);
 }
 
 /*ARGSUSED*/
