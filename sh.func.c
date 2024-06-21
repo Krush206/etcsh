@@ -360,7 +360,7 @@ doif(Char **v, struct command *kp)
 	int i;
 
 	v++;
-	i = expr(&v);
+	i = !!expr(&v);
 	if (*v != NULL)
 	    stderror(ERR_NAME | ERR_EXPRESSION);
 	/*
@@ -566,7 +566,7 @@ dowhile(Char **v, struct command *c)
     if (noexec)
 	status = 0;
     else if (intty && !again)
-	status = !exp0(&v, 1);
+	status = !exp0(&v, TEXP_IGNORE);
     else
 	status = !expr(&v);
     if (*v && !noexec)

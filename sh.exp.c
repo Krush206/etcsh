@@ -223,7 +223,7 @@ exp0(Char ***vp, int ignore)
 
     etraci("exp0 p1", p1, vp);
     while (**vp && eq(**vp, STRor2)) {
-	int p2;
+	tcsh_number_t p2;
 
 	(*vp)++;
 
