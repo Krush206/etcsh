@@ -625,6 +625,13 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	}
 
 	doio(t, pipein, pipeout);
+#ifdef BACKPIPE
+	if (t->t_dflg & F_PIPEIN)
+	    xclose(pipein[0]);
+#else /* !BACKPIPE */
+	if (t->t_dflg & F_PIPEOUT)
+	    xclose(pipeout[0]);
+#endif /* BACKPIPE */
 	/*
 	 * Perform a builtin function. If we are not forked, arrange for
 	 * possible stopping
