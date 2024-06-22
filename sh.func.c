@@ -134,6 +134,7 @@ func(struct command *t, const struct biltins *bp)
     int     i;
 
     if (bp->bfunct != doexit &&
+	bp->bfunct != dotest &&
 	bp->bfunct != dolet &&
 	bp->bfunct != doif &&
 	bp->bfunct != dowhile)

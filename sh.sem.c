@@ -190,6 +190,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		    (Strlen(t->t_dcom[0] + 1) + 1) * sizeof (*t->t_dcom[0]));
 	if (!(expr = ((bifunc = isbfunc(t)) &&
 		      (bifunc->bfunct == doexit ||
+		       bifunc->bfunct == dotest ||
 		       bifunc->bfunct == dolet ||
 		       bifunc->bfunct == doif ||
 		       bifunc->bfunct == dowhile))))
