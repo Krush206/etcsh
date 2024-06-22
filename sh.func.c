@@ -356,18 +356,19 @@ islogin(void)
 void
 doif(Char **v, struct command *kp)
 {
+    USE(kp);
     if (!noexec) {
 	int i;
 
 	v++;
-	i = !!expr(&v);
+	i = !expr(&v);
 	if (*v != NULL)
 	    stderror(ERR_NAME | ERR_EXPRESSION);
 	/*
 	 * If expression was zero, then scan to else , otherwise just fall into
 	 * following code.
 	 */
-	if (!i)
+	if (i)
 	    search(TC_IF, 0, NULL);
     }
 }
@@ -2877,8 +2878,12 @@ fn_restore(void *xst)
 void
 dotest(Char **v, struct command *c)
 {
-    USE(c);
+    int i;
 
+    USE(c);
     v++;
-    setstatus(!expr(&v));
+    i = !expr(&v);
+    if (*v != NULL)
+	stderror(ERR_NAME | ERR_EXPRESSION);
+    setstatus(i);
 }
