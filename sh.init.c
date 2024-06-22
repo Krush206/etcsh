@@ -198,6 +198,7 @@ struct srch srchn[] = {
     { "goto",		TC_GOTO		},
     { "if",		TC_IF		},
     { "label",		TC_LABEL	},
+    { "return",		TC_RETURN	},
     { "set",		TC_SET		},
     { "switch",		TC_SWITCH	},
     { "test",		TC_TEST		},

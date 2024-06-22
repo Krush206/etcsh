@@ -983,6 +983,11 @@ past:
 	stderror(ERR_NAME | ERR_NOTFOUND, "label");
 	break;
 
+    case TC_RETURN:
+	setname(short2str(Sgoal));
+	stderror(ERR_NAME | ERR_NOTFOUND, "return");
+	break;
+
     default:
 	break;
     }
@@ -1083,7 +1088,7 @@ past:
 	stderror(ERR_NAME | ERR_NOTFOUND, "label");
 	break;
 
-    case TC_EXIT:
+    case TC_RETURN:
 	setname(short2str(Sgoal));
 	stderror(ERR_NAME | ERR_NOTFOUND, "return");
 	break;
@@ -2738,7 +2743,7 @@ dofunction(Char **v, struct command *c)
 	return;
     }
     Sgoal = *v++;
-    Stype = TC_EXIT;
+    Stype = TC_RETURN;
     {
 	int pv[2];
 	struct saved_state st;
@@ -2765,8 +2770,7 @@ dofunction(Char **v, struct command *c)
 	    c->t_dflg & (F_PIPEIN | F_PIPEOUT))
 	    stderror(ERR_UNDFUNC, Sgoal);
 	{
-	    Char funcexit[] = { 'r', 'e', 't', 'u', 'r', 'n', '\0' },
-		 alarg[] = { '!', '*', '\0' },
+	    Char alarg[] = { '!', '*', '\0' },
 		 *(*varvec)[4];
 	    struct Strbuf aword = Strbuf_INIT,
 			  func = Strbuf_INIT;
@@ -2793,7 +2797,7 @@ dofunction(Char **v, struct command *c)
 		    histent = histent->next;
 		}
 
-		if (eq(aword.s, funcexit))
+		if (srchx(aword.s) == TC_RETURN)
 		    break;
 		Strbuf_append(&func, aword.s);
 		Strbuf_append1(&func, ' ');

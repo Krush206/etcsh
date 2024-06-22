@@ -955,7 +955,7 @@ struct command {
 #define	TC_SET		14
 #define	TC_SWITCH	15
 #define	TC_TEST		16
-#define	TC_THEN		17
+#define	TC_RETURN	17
 #define	TC_WHILE	18
 
 /*
