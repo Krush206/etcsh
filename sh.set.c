@@ -346,7 +346,7 @@ doset(Char **v, struct command *c)
 
 	    if (pipe) {
 		memset(&s, 0, sizeof s);
-		while (wide_read(0, &c, (size_t) 1, 0) > 0)
+		while (wide_read(OLDSTD, &c, (size_t) 1, 0) > 0)
 		    Strbuf_append1(&s, c | QUOTE);
 		Strbuf_terminate(&s);
 		copy = s.s;
@@ -362,7 +362,7 @@ doset(Char **v, struct command *c)
 		int empty = 1;
 
 		memset(&s, 0, sizeof s);
-		while (wide_read(0, &c, (size_t) 1, 0) > 0) {
+		while (wide_read(OLDSTD, &c, (size_t) 1, 0) > 0) {
 		    if (c == '\n') {
 			empty = 0;
 
