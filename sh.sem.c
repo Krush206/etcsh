@@ -866,7 +866,8 @@ doio(struct command *t, int *pipein, int *pipeout)
 	}
 	else if (flags & F_PIPEIN) {
 	    xclose(0);
-	    (void) dmove(pipein[0], 0);
+	    TCSH_IGNORE(dup(pipein[0]));
+	    xclose(pipein[0]);
 	    xclose(pipein[1]);
 	}
 	else if ((flags & F_NOINTERRUPT) && tpgrp == -1) {
@@ -928,7 +929,7 @@ doio(struct command *t, int *pipein, int *pipeout)
     }
     else if (flags & F_PIPEOUT) {
 	xclose(1);
-	(void) dcopy(pipeout[1], 1);
+	TCSH_IGNORE(dup(pipeout[1]));
 	is1atty = 0;
     }
     else {
@@ -942,7 +943,7 @@ doio(struct command *t, int *pipein, int *pipeout)
 
     xclose(2);
     if (flags & F_STDERR) {
-	(void) dcopy(1, 2);
+	TCSH_IGNORE(dup(1));
 	is2atty = is1atty;
     }
     else {
