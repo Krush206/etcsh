@@ -1724,9 +1724,9 @@ bgetc(void)
 	    balloc(buf);
 	    roomleft = BUFSIZE - off;
 	    if (insource == 2) {
-		if (!*fdecl)
+		if (*fnsrc.decl == '\0')
 		    return CHAR_ERR;
-		(void) xwrite(fpipe, fdecl++, (size_t) 1);
+		(void) xwrite(fnsrc.pipe, fnsrc.decl++, (size_t) 1);
 	    }
 	    c = wide_read(SHIN, fbuf[buf] + off, roomleft, 0);
 	    if (c > 0)

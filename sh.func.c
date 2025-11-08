@@ -2762,9 +2762,7 @@ getYN(const char *prompt)
     return doit;
 }
 
-static int flvl;
-int fpipe = -1;
-Char *fdecl;
+struct Function fnsrc = { -1, 0, STRNULL };
 
 void
 dofunction(Char **v, struct command *c)
@@ -2788,7 +2786,7 @@ dofunction(Char **v, struct command *c)
 	    if (!alnum(*p))
 		stderror(ERR_NAME | ERR_FUNCALNUM);
 	if ((varp = adrof1(Sgoal, &functions))) {
-	    if (flvl == 100)
+	    if (fnsrc.lvl == 100)
 		stderror(ERR_RECURSION);
 	    mypipe(pv);
 	    cleanup_push(&st, fn_restore);
@@ -2867,12 +2865,11 @@ dofunction(Char **v, struct command *c)
 	    if (!func.len)
 		return;
 	    Strbuf_terminate(&func);
-	    **(varvec = xcalloc(1, sizeof *varvec -
-				(sizeof **varvec * 2))) =
-	    func.s;
+	    varvec = xcalloc(1, sizeof *varvec - (sizeof **varvec * 2));
+	    **varvec = func.s;
 	    setq(Sgoal, *varvec, &functions, VAR_READONLY);
-	    **(varvec = xcalloc(1, sizeof *varvec)) =
-	    Strsave(str2short(bname));
+	    varvec = xcalloc(1, sizeof *varvec);
+	    **varvec = Strsave(str2short(bname));
 	    (*varvec)[1] = Strsave(Sgoal);
 	    (*varvec)[2] = Strsave(alarg);
 	    setq(Sgoal, *varvec, &aliases, VAR_READWRITE);
@@ -2886,11 +2883,11 @@ static void
 fn_save(struct saved_state *st, int pv[2], Char **av, Char *decl)
 {
     st_save(st, pv[0], 0, NULL, av);
-    st->fn.pipe = fpipe;
-    st->fn.decl = fdecl;
-    fpipe = pv[1];
-    fdecl = decl;
-    flvl++;
+    st->fn.pipe = fnsrc.pipe;
+    st->fn.decl = fnsrc.decl;
+    fnsrc.pipe = pv[1];
+    fnsrc.decl = decl;
+    fnsrc.lvl++;
     insource = 2;
 }
 
@@ -2900,10 +2897,10 @@ fn_restore(void *xst)
     struct saved_state *st;
 
     st_restore(xst);
-    xclose(fpipe);
-    fpipe = (st = xst)->fn.pipe;
-    fdecl = st->fn.decl;
-    flvl--;
+    xclose(fnsrc.pipe);
+    fnsrc.pipe = (st = xst)->fn.pipe;
+    fnsrc.decl = st->fn.decl;
+    fnsrc.lvl--;
 }
 
 void

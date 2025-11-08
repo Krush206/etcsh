@@ -1268,6 +1268,13 @@ EXTERN nl_catd catd;
 extern int    filec;
 #endif /* FILEC */
 
+struct Function { /* Structure for dofunction. */
+    int pipe, lvl;
+    Char *decl;
+};
+
+extern struct Function fnsrc;
+
 /*
  * This preserves the input state of the shell. It is used by
  * st_save and st_restore to manupulate shell state.
@@ -1294,10 +1301,7 @@ struct saved_state {
     int	  cantell;
     struct Bin	  B;
     int		  justpr;
-    struct {
-	int pipe;
-	Char *decl;
-    } fn;
+    struct Function fn;
 };
 
 #include "sh.decls.h"
@@ -1334,15 +1338,11 @@ struct saved_state {
 --version	print the version shell variable and exit \n\
 \nSee the tcsh(1) manual page for detailed information.\n"
 
+#define QUOTES (_QB|_QF|_ESC) /* \ " ' ` */
+
 #include "tc.nls.h"
 
 #define TEXP_IGNORE 1	/* in ignore, it means to ignore value, just parse */
 #define TEXP_NOGLOB 2	/* in ignore, it means not to globone */
-
-extern int fpipe; /* Write end of a pipe used by dofunction. */
-extern Char *fdecl; /* Pointer to function declaration
-		     * used by dofunction. */
-
-#define QUOTES (_QB|_QF|_ESC) /* \ " ' ` */
 
 #endif /* _h_sh */
