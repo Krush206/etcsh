@@ -1361,7 +1361,7 @@ insert(struct wordent *pl, int file_args)
 
 	now = xcalloc(1, sizeof(struct wordent));
 	now->word = xcalloc(1, 2 * sizeof(Char));
-	(void) Strcpy(now->word, STRgt);
+	(void) Strcpy(now->word, STRgtr);
 	insert_we(now, last->prev);
 
 	now = xcalloc(1, sizeof(struct wordent));

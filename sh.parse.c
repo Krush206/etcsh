@@ -322,11 +322,16 @@ syn1(const struct wordent *p1, const struct wordent *p2, int flags)
 	    if (l != 0)
 		break;
 	    t = xcalloc(1, sizeof(*t));
-	    t->t_dtyp = NODE_LIST;
+	    if (p->word[0] == ';')
+		t->t_dtyp = NODE_FUNC;
+	    else
+		t->t_dtyp = NODE_LIST;
 	    t->t_dcar = syn1a(p1, p, flags);
 	    t->t_dcdr = syntax(p->next, p2, flags);
 	    if (t->t_dcdr == 0)
 		t->t_dcdr = t->t_dcar, t->t_dcar = 0;
+	    else if (t->t_dcdr->t_dtyp != NODE_FUNC)
+		stderror(ERR_NULLCOM);
 	    return (t);
 
 	default:

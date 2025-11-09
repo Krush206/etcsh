@@ -57,6 +57,9 @@ static	void		vffree		(int);
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
 static	void		 chkclob	(const char *);
+static	void		 list		(struct command *,
+					 struct Strbuf *,
+					 int);
 
 /*
  * C shell
@@ -730,7 +733,14 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	    execute(t->t_dcdr, wanttty, NULL, NULL, do_glob);
 	}
 	break;
+    case NODE_FUNC: {
+	struct Strbuf buf = Strbuf_INIT;
 
+	cleanup_push(&buf, Strbuf_cleanup);
+	list(t, &buf, TRUE);
+	cleanup_until(&buf);
+	break;
+    }
     case NODE_OR:
     case NODE_AND:
 	if (t->t_dcar) {
@@ -992,4 +1002,78 @@ chkclob(const char *cp)
     }
 
     stderror(ERR_EXISTS, cp);
+}
+
+static void
+list(struct command *t, struct Strbuf *buf, int nl)
+{
+    Char **v;
+
+    switch (t->t_dtyp) {
+    case NODE_FUNC:
+    case NODE_PIPE:
+    case NODE_AND:
+    case NODE_OR:
+	if (t->t_dcar) {
+	    switch (t->t_dtyp) {
+	    case NODE_PIPE:
+		list(t->t_dcar, buf, FALSE);
+		Strbuf_append(buf, STRor);
+		break;
+	    case NODE_AND:
+		list(t->t_dcar, buf, FALSE);
+		Strbuf_append(buf, STRand2);
+		break;
+	    case NODE_OR:
+		list(t->t_dcar, buf, FALSE);
+		Strbuf_append(buf, STRor2);
+		break;
+	    default:
+		list(t->t_dcar, buf, nl);
+	    }
+	    if (t->t_dcdr)
+		list(t->t_dcdr, buf, nl);
+	    return;
+	}
+	if (t->t_dcdr) {
+	    list(t->t_dcdr, buf, nl);
+	    return;
+	}
+    }
+    if (t->t_dspr) {
+	struct Strbuf nbuf = Strbuf_INIT;
+
+	cleanup_push(&nbuf, Strbuf_cleanup);
+	list(t->t_dspr, &nbuf, TRUE);
+	if (t->t_dlef) {
+	    Strbuf_append(&nbuf, STRlss);
+	    Strbuf_append(&nbuf, t->t_dlef);
+	}
+	if (t->t_drit) {
+	    Strbuf_append(&nbuf, STRgtr);
+	    Strbuf_append(&nbuf, t->t_drit);
+	}
+	xprintf("%s\n", short2str(nbuf.s));
+	Strbuf_append(buf, nbuf.s);
+	cleanup_until(&nbuf);
+	return;
+    }
+    v = t->t_dcom;
+    while (*v) {
+	Strbuf_append(buf, *v++);
+	Strbuf_append(buf, STRspace);
+    }
+    if (t->t_dlef) {
+	Strbuf_append(buf, STRlss);
+	Strbuf_append(buf, t->t_dlef);
+    }
+    if (t->t_drit) {
+	Strbuf_append(buf, STRgtr);
+	Strbuf_append(buf, t->t_drit);
+    }
+    if (nl)
+	Strbuf_append(buf, STRret);
+    Strbuf_terminate(buf);
+
+    xprintf("%s\n", short2str(buf->s));
 }
