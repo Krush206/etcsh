@@ -1274,6 +1274,7 @@ struct Function { /* Structure for dofunction. */
     Char *decl;
 };
 
+extern struct wordent fntmp;
 extern struct Function fnsrc;
 
 /*
