@@ -57,6 +57,11 @@ static	void		vffree		(int);
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
 static	void		 chkclob	(const char *);
+static	void		 list		(struct command *,
+					 struct Strbuf *,
+					 int,
+					 int,
+					 int);
 
 /*
  * C shell
@@ -93,6 +98,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
     static int onosigchld = 0;
 #endif /* VFORK */
     static int nosigchld = 0;
+    struct Strbuf buf = Strbuf_INIT;
 
     (void) &wanttty;
     (void) &forked;
@@ -730,7 +736,16 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	    execute(t->t_dcdr, wanttty, NULL, NULL, do_glob);
 	}
 	break;
+    case NODE_FUNC: {
+	struct wordent *fnptr;
 
+	cleanup_push(&buf, Strbuf_cleanup);
+	list(t, &buf, wanttty, do_glob, TRUE);
+	cleanup_until(&buf);
+	for (fnptr = fntmp.next; fnptr != &fntmp; fnptr = fnptr->next)
+	    xprintf("%s: end\n", short2str(fnptr->word));
+	break;
+    }
     case NODE_OR:
     case NODE_AND:
 	if (t->t_dcar) {
@@ -992,4 +1007,73 @@ chkclob(const char *cp)
     }
 
     stderror(ERR_EXISTS, cp);
+}
+
+struct wordent fntmp = { STRNULL, &fntmp, &fntmp };
+
+static void
+list(struct command *t, struct Strbuf *buf, int wanttty, int do_glob, int nl)
+{
+    Char **v;
+    static struct wordent *fnptr = &fntmp;
+    static int save;
+
+    switch (t->t_dtyp) {
+    case NODE_FUNC:
+    case NODE_PIPE:
+    case NODE_AND:
+    case NODE_OR:
+	save = 0;
+	if (t->t_dcar)
+	    switch (t->t_dtyp) {
+	    case NODE_PIPE:
+		list(t->t_dcar, buf, wanttty, do_glob, FALSE);
+		Strbuf_append(buf, STRor);
+		break;
+	    case NODE_AND:
+		list(t->t_dcar, buf, wanttty, do_glob, FALSE);
+		Strbuf_append(buf, STRand2);
+		break;
+	    case NODE_OR:
+		list(t->t_dcar, buf, wanttty, do_glob, FALSE);
+		Strbuf_append(buf, STRor2);
+		break;
+	    default:
+		list(t->t_dcar, buf, wanttty, do_glob, FALSE);
+		Strbuf_append(buf, STRret);
+	    }
+	save = 1;
+	if (t->t_dcdr)
+	    list(t->t_dcdr, buf, wanttty, do_glob, nl);
+	fnptr = &fntmp;
+	return;
+    }
+    if (t->t_dspr) {
+	execute(t, wanttty, NULL, NULL, do_glob);
+	return;
+    }
+    v = t->t_dcom;
+    while (*v) {
+	Strbuf_append(buf, *v++);
+	Strbuf_append(buf, STRspace);
+    }
+    if (t->t_dlef) {
+	Strbuf_append(buf, STRlss);
+	Strbuf_append(buf, t->t_dlef);
+    }
+    if (t->t_drit) {
+	Strbuf_append(buf, STRgtr);
+	Strbuf_append(buf, t->t_drit);
+    }
+    if (nl)
+	Strbuf_append(buf, STRret);
+    Strbuf_terminate(buf);
+    if (save) {
+	fnptr->next = xmalloc(sizeof fntmp);
+	fnptr->next->next = &fntmp;
+	fnptr->next->prev = fnptr;
+	fnptr = fnptr->next;
+	fntmp.prev = fnptr;
+	fnptr->word = Strsave(buf->s);
+    }
 }

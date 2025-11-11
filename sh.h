@@ -885,9 +885,10 @@ struct command {
 #define	NODE_COMMAND	1	/* t_dcom <t_dlef >t_drit	 */
 #define	NODE_PAREN	2	/* ( t_dspr ) <t_dlef >t_drit	 */
 #define	NODE_PIPE	3	/* t_dlef | t_drit		 */
-#define	NODE_LIST	4	/* t_dlef ; t_drit		 */
+#define	NODE_LIST	4	/* t_dlef & t_drit		 */
 #define	NODE_OR		5	/* t_dlef || t_drit		 */
 #define	NODE_AND	6	/* t_dlef && t_drit		 */
+#define NODE_FUNC	7	/* t_dlef ; t_drit ;		 */
     unsigned char   t_nice;	/* Nice value			 */
 #ifdef apollo
     unsigned char   t_systype;	/* System environment		 */
@@ -1273,6 +1274,7 @@ struct Function { /* Structure for dofunction. */
     Char *decl;
 };
 
+extern struct wordent fntmp;
 extern struct Function fnsrc;
 
 /*

@@ -331,7 +331,8 @@ Char STRspLarrow2sp[]	= { ' ', '<', '<', ' ', '\0' };
 Char STRspLarrowsp[]	= { ' ', '<', ' ', '\0' };
 Char STRspRarrow2[]	= { ' ', '>', '>', '\0' };
 Char STRspRarrow[]	= { ' ', '>', '\0' };
-Char STRgt[]		= { '>', '\0' };
+Char STRgtr[]		= { '>', '\0' };
+Char STRlss[]		= { '<', '\0' };
 Char STRcent2[]		= { '%', '%', '\0' };
 Char STRcentplus[]	= { '%', '+', '\0' };
 Char STRcentminus[]	= { '%', '-', '\0' };
@@ -525,3 +526,4 @@ Char STRparseoctal[]	= { 'p', 'a', 'r', 's', 'e', 'o', 'c', 't', 'a', 'l',
 			    '\0' };
 Char STRli[]		= { 'l', 'i', '#', '\0' };
 Char STRco[]		= { 'c', 'o', '#', '\0' };
+Char STRfn[]		= { 'f', 'u', 'n', 'c', 't', 'i', 'o', 'n', '\0' };

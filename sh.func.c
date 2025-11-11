@@ -2830,7 +2830,7 @@ dofunction(Char **v, struct command *c)
 		if (srchx(aword.s) == TC_RETURN)
 		    break;
 		Strbuf_append(&func, aword.s);
-		Strbuf_append1(&func, ' ');
+		Strbuf_append(&func, STRspace);
 		while (getword(&aword)) {
 		    Strbuf_terminate(&aword);
 		    if (intty && Strlen(aword.s) > 0) {
@@ -2840,7 +2840,7 @@ dofunction(Char **v, struct command *c)
 			histent = histent->next;
 		    }
 		    Strbuf_append(&func, aword.s);
-		    Strbuf_append1(&func, ' ');
+		    Strbuf_append(&func, STRspace);
 		}
 		func.s[func.len - 1] = '\n';
 
