@@ -919,6 +919,7 @@ struct command {
 #ifdef apollo
 #define F_VER		(1<<16)	/* execute command under SYSTYPE */
 #endif
+#define F_LINE		(1<<17)	/* one-line command		 */
     union {
 	Char   *T_dlef;		/* Input redirect word 		 */
 	struct command *T_dcar;	/* Left part of list/pipe 	 */
@@ -1274,8 +1275,15 @@ struct Function { /* Structure for dofunction. */
     Char *decl;
 };
 
-extern struct wordent fntmp;
+struct FnTmp {
+    Char **v;
+    struct FnTmp *next;
+    struct FnTmp *prev;
+};
+
 extern struct Function fnsrc;
+
+extern struct FnTmp fntmp;
 
 /*
  * This preserves the input state of the shell. It is used by
