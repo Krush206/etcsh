@@ -62,7 +62,7 @@ static	void		vffree		(int);
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
 static	void		 chkclob	(const char *);
-static	void		 fnlist		(struct command *, int, int);
+static	void		 fnlist		(struct command *);
 
 /*
  * C shell
@@ -190,16 +190,6 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	wanttty = 0;
     switch (t->t_dtyp) {
     case NODE_COMMAND:
-	if (t->t_dflg & F_LINE) {
-	    struct FnTmp *new;
-
-	    new = xmalloc(sizeof *new);
-	    new->next = &fntmp;
-	    new->prev = fnptr;
-	    new->v = t->t_dcom;
-	    fnptr = fnptr->next = new;
-	    break;
-	}
 	if ((t->t_dcom[0][0] & (QUOTE | TRIM)) == QUOTE)
 	    memmove(t->t_dcom[0], t->t_dcom[0] + 1,
 		    (Strlen(t->t_dcom[0] + 1) + 1) * sizeof (*t->t_dcom[0]));
@@ -746,9 +736,13 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	}
 	break;
     case NODE_FUNC:
-	fnlist(t, wanttty, do_glob);
-	for (fnptr = fntmp.next; fnptr != &fntmp; fnptr = fnptr->next)
-	    xprintf("%s\n", short2str(*fnptr->v));
+	cleanup_push(&fntmp, fntmp_cleanup);
+	fnlist(t);
+	if (t->t_dcar)
+	    execute(t->t_dcar, wanttty, NULL, NULL, do_glob);
+	if (t->t_dcdr)
+	    execute(t->t_dcdr, wanttty, NULL, NULL, do_glob);
+	cleanup_until(&fntmp);
 	break;
     case NODE_OR:
     case NODE_AND:
@@ -1014,23 +1008,44 @@ chkclob(const char *cp)
 }
 
 static void
-fnlist(struct command *t, int wanttty, int do_glob)
+fnlist(struct command *t)
 {
+    if (t->t_dtyp == NODE_PAREN) {
+	fnlist(t->t_dspr);
+	return;
+    }
     if (t->t_dtyp != NODE_COMMAND) {
-	if (t->t_dtyp == NODE_PAREN) {
-	    fnlist(t->t_dspr, wanttty, do_glob);
-	    return;
-	}
 	if (t->t_dcar)
-	    fnlist(t->t_dcar, wanttty, do_glob);
+	    fnlist(t->t_dcar);
 	if (t->t_dcdr)
-	    fnlist(t->t_dcdr, wanttty, do_glob);
+	    fnlist(t->t_dcdr);
 	return;
     }
     if (t->t_dflg & F_LINE) {
-	execute(t, wanttty, NULL, NULL, do_glob);
-	t->t_dflg &= ~F_LINE;
-	return;
+	struct FnTmp *new;
+
+	new = xmalloc(sizeof *new);
+	new->next = &fntmp;
+	new->prev = fnptr;
+	new->v = t->t_dcom;
+	fnptr = fnptr->next = new;
     }
-    execute(t, wanttty, NULL, NULL, do_glob);
+}
+
+void
+fntmp_cleanup(void *xptr)
+{
+    struct FnTmp *ptr;
+
+    ptr = xptr;
+    ptr = ptr->next;
+    while (ptr != &fntmp) {
+	struct FnTmp *tmp;
+
+	tmp = ptr;
+	ptr->prev->next = ptr->next;
+	ptr->next->prev = ptr->prev;
+	ptr = ptr->next;
+	xfree(tmp);
+    }
 }
