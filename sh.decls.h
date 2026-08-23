@@ -317,6 +317,7 @@ extern	void		  freesyn	(struct command *);
 extern struct command 	 *syntax	(const struct wordent *,
 					 const struct wordent *, int);
 extern	void		  syntax_cleanup(void *);
+extern struct command	 *list		(struct command *);
 
 /*
  * sh.print.c
