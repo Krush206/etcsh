@@ -1284,6 +1284,7 @@ struct FnTmp {
 extern struct Function fnsrc;
 
 extern struct FnTmp fntmp;
+extern struct FnTmp *fnptr;
 
 /*
  * This preserves the input state of the shell. It is used by
