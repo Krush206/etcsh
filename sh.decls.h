@@ -381,6 +381,7 @@ extern  struct process   *pfind		(Char *);
 extern	void		  execute	(struct command *, volatile int, int *,
 					 int *, int);
 extern	void		  mypipe	(int *);
+extern	void		  fntmp_cleanup	(void *);
 
 /*
  * sh.set.c
