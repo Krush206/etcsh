@@ -44,6 +44,9 @@ static	struct command	*syn1a	 (const struct wordent *, const struct wordent *, i
 static	struct command	*syn1b	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn2	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn3	 (const struct wordent *, const struct wordent *, int);
+static	struct command	*list1	 (struct command *);
+static	struct command	*list2	 (struct command *);
+static	struct command	*list3	 (struct command *);
 
 #define ALEFT	51		/* max of 50 alias expansions	 */
 #define HLEFT	11		/* max of 10 history expansions */
@@ -705,4 +708,79 @@ syntax_cleanup(void *xt)
 
     t = xt;
     freesyn(t);
+}
+
+struct command *
+list(struct command *t)
+{
+    switch (t->t_dtyp) {
+    case NODE_AND:
+    case NODE_OR:
+    case NODE_PIPE:
+    case NODE_LIST:
+	return list2(t);
+    case NODE_PAREN:
+	return list(t->t_dspr);
+    case NODE_FUNC:
+	return list3(list1(t));
+    }
+    return t;
+}
+
+static struct command *
+list1(struct command *t)
+{
+    switch (t->t_dtyp) {
+    case NODE_AND:
+    case NODE_OR:
+    case NODE_PIPE:
+    case NODE_LIST:
+	if (t->t_dcar)
+	    (void) list(t->t_dcar);
+	if (t->t_dcdr)
+	    (void) list(t->t_dcdr);
+	return t;
+    case NODE_PAREN:
+	return list(t->t_dspr);
+    case NODE_FUNC:
+	if (t->t_dcar)
+	    (void) list1(t->t_dcar);
+	if (t->t_dcdr)
+	    (void) list1(t->t_dcdr);
+	return t;
+    }
+    return t;
+}
+
+static struct command *
+list2(struct command *t)
+{
+    switch (t->t_dtyp) {
+    case NODE_AND:
+    case NODE_OR:
+    case NODE_PIPE:
+    case NODE_LIST:
+	if (t->t_dcar)
+	    (void) list2(t->t_dcar);
+	if (t->t_dcdr)
+	    (void) list2(t->t_dcdr);
+	return t;
+    case NODE_PAREN:
+	return list(t->t_dspr);
+    case NODE_FUNC:
+	return list1(t);
+    }
+    return t;
+}
+
+static struct command *
+list3(struct command *t)
+{
+    if (t->t_dcar)
+	list3(t->t_dcar);
+    if (t->t_dcdr)
+	list3(t->t_dcdr);
+    if (t->t_dtyp == NODE_COMMAND)
+	t->t_dflg |= F_LINE;
+    return t;
 }
