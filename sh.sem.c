@@ -189,6 +189,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
     if (t->t_dflg & F_AMPERSAND)
 	wanttty = 0;
     switch (t->t_dtyp) {
+	size_t omark;
     case NODE_COMMAND:
 	if ((t->t_dcom[0][0] & (QUOTE | TRIM)) == QUOTE)
 	    memmove(t->t_dcom[0], t->t_dcom[0] + 1,
@@ -737,11 +738,14 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	break;
     case NODE_FUNC:
 	cleanup_push(&fntmp, fntmp_cleanup);
+	omark = cleanup_push_mark();
+	fnptr = &fntmp;
 	fnlist(t);
 	if (t->t_dcar)
 	    execute(t->t_dcar, wanttty, NULL, NULL, do_glob);
 	if (t->t_dcdr)
 	    execute(t->t_dcdr, wanttty, NULL, NULL, do_glob);
+	cleanup_pop_mark(omark);
 	cleanup_until(&fntmp);
 	break;
     case NODE_OR:
