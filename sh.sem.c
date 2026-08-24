@@ -51,10 +51,8 @@
 # endif /* !MACH && SYSVREL == 0 && !Lynx && !BSD4_4 && !glibc */
 #endif /* __sparc__ || sparc */
 
-static Char *nullarr[] = { STRNULL, NULL };
-
-struct FnTmp fntmp = { nullarr, &fntmp, &fntmp };
-struct FnTmp *fnptr = &fntmp;
+struct CommandList fntmp = { NULL, &fntmp, &fntmp };
+struct CommandList *fnptr = &fntmp;
 
 #ifdef VFORK
 static	void		vffree		(int);
@@ -201,7 +199,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		       bifunc->bfunct == doif ||
 		       bifunc->bfunct == dowhile))))
 	    Dfix(t);		/* $ " ' \ */
-	if (t->t_dcom[0] == 0) {
+	if (t->t_dcom[0] == 0 || (t->t_dflg & F_SKIP)) {
 	    return;
 	}
 	/*FALLTHROUGH*/
@@ -1026,25 +1024,26 @@ fnlist(struct command *t)
 	return;
     }
     if (t->t_dflg & F_LINE) {
-	struct FnTmp *new;
+	struct CommandList *new;
 
 	new = xmalloc(sizeof *new);
 	new->next = &fntmp;
 	new->prev = fnptr;
-	new->v = t->t_dcom;
-	fnptr = fnptr->next = new;
+	new->t = t;
+	fntmp.prev = fnptr = fnptr->next = new;
     }
 }
 
 void
 fntmp_cleanup(void *xptr)
 {
-    struct FnTmp *ptr;
+    struct CommandList *ptr;
+    struct CommandList *hp;
 
-    ptr = xptr;
+    hp = ptr = xptr;
     ptr = ptr->next;
-    while (ptr != &fntmp) {
-	struct FnTmp *tmp;
+    while (ptr != hp) {
+	struct CommandList *tmp;
 
 	tmp = ptr;
 	ptr->prev->next = ptr->next;
