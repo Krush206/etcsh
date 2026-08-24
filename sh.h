@@ -920,6 +920,7 @@ struct command {
 #define F_VER		(1<<16)	/* execute command under SYSTYPE */
 #endif
 #define F_LINE		(1<<17)	/* one-line command		 */
+#define F_SKIP		(1<<18) /* skip command			 */
     union {
 	Char   *T_dlef;		/* Input redirect word 		 */
 	struct command *T_dcar;	/* Left part of list/pipe 	 */
@@ -1275,16 +1276,16 @@ struct Function { /* Structure for dofunction. */
     Char *decl;
 };
 
-struct FnTmp {
-    Char **v;
-    struct FnTmp *next;
-    struct FnTmp *prev;
+struct CommandList {
+    struct command *t;
+    struct CommandList *next;
+    struct CommandList *prev;
 };
 
 extern struct Function fnsrc;
 
-extern struct FnTmp fntmp;
-extern struct FnTmp *fnptr;
+extern struct CommandList fntmp;
+extern struct CommandList *fnptr;
 
 /*
  * This preserves the input state of the shell. It is used by
