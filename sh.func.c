@@ -56,6 +56,7 @@ static	void	preread		(void);
 static	void	doagain		(void);
 static  const char *isrchx	(int);
 static	void	search		(int, int, Char *);
+static	void	search1		(int, int);
 static	int	getword		(struct Strbuf *);
 static	struct wordent	*histgetword	(struct wordent *);
 static	void	toend		(void);
@@ -133,6 +134,7 @@ func(struct command *t, const struct biltins *bp)
 {
     int     i;
 
+    fnptr = fntmp.next;
     if (bp->bfunct != doexit &&
 	bp->bfunct != dotest &&
 	bp->bfunct != dolet &&
@@ -362,6 +364,10 @@ doif(Char **v, struct command *kp)
     v++;
     i = noexec ? 1 : !!expr(&v);
     if (*v == NULL) {
+	if (kp->t_dflg & F_LINE) {
+	    search1(TC_IF, 0);
+	    return;
+	}
 	/*
 	 * If expression was zero, then scan to else , otherwise just fall into
 	 * following code.
@@ -917,6 +923,25 @@ search(int type, int level, Char *goal)
     } while (level >= 0);
  end:
     cleanup_until(&word);
+}
+
+static void
+search1(int type, int level)
+{
+    while (level >= 0) {
+	fnptr = fnptr->next;
+	if (fnptr == &fntmp)
+	    switch (type) {
+	    case TC_IF:
+	    case TC_ELSE:
+		stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+	    }
+	switch (srchx(*fnptr->v)) {
+	case TC_ENDIF:
+	    if (type == TC_IF || type == TC_ELSE)
+		level--;
+	}
+    }
 }
 
 static struct wordent *
