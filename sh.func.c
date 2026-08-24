@@ -364,16 +364,16 @@ doif(Char **v, struct command *kp)
     v++;
     i = noexec ? 1 : !!expr(&v);
     if (*v == NULL) {
-	if (kp->t_dflg & F_LINE) {
-	    search1(TC_IF, 0);
-	    return;
-	}
 	/*
 	 * If expression was zero, then scan to else , otherwise just fall into
 	 * following code.
 	 */
-	if (!i)
-	    search(TC_IF, 0, NULL);
+	if (!i) {
+	    if (kp->t_dflg & F_LINE)
+		search1(TC_IF, 0);
+	    else
+		search(TC_IF, 0, NULL);
+	}
 	return;
     }
     /*
@@ -433,8 +433,12 @@ doelse (Char **v, struct command *c)
 {
     USE(c);
     USE(v);
-    if (!noexec)
-	search(TC_ELSE, 0, NULL);
+    if (!noexec) {
+	if (c->t_dflg & F_LINE)
+	    search1(TC_ELSE, 0);
+	else
+	    search(TC_ELSE, 0, NULL);
+    }
 }
 
 /*ARGSUSED*/
@@ -928,6 +932,12 @@ search(int type, int level, Char *goal)
 static void
 search1(int type, int level)
 {
+    struct CommandList tmp;
+    struct CommandList *ptr;
+
+    memset(ptr = &tmp, 0, sizeof tmp);
+    ptr->next = ptr->prev = ptr;
+    cleanup_push(&tmp, fntmp_cleanup);
     while (level >= 0) {
 	fnptr = fnptr->next;
 	if (fnptr == &fntmp)
@@ -936,12 +946,26 @@ search1(int type, int level)
 	    case TC_ELSE:
 		stderror(ERR_NAME | ERR_NOTFOUND, "endif");
 	    }
-	switch (srchx(*fnptr->v)) {
+	switch (srchx(*fnptr->t->t_dcom)) {
 	case TC_ENDIF:
 	    if (type == TC_IF || type == TC_ELSE)
 		level--;
+	    break;
+	case TC_ELSE:
+	    if (level == 0 || type == TC_IF)
+		goto end;
+	    break;
+	default:
+	    ptr->t = fnptr->t;
+	    ptr->t->t_dflg |= F_SKIP;
+	    ptr->next = xmalloc(sizeof *ptr);
+	    ptr->next->prev = ptr;
+	    tmp.prev = ptr = ptr->next;
+	    ptr->next = &tmp;
 	}
     }
+end:
+    cleanup_until(&tmp);
 }
 
 static struct wordent *
