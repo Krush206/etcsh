@@ -56,10 +56,16 @@ static	void	preread		(void);
 static	void	doagain		(void);
 static  const char *isrchx	(int);
 static	void	search		(int, int, Char *);
-static	void	search1		(int, int);
+static	void	search1		(struct command *, int, Char *);
+static	struct CommandList *search2(struct CommandList *, int, Char *);
+static	struct CommandList *search3(struct CommandList *, int, Char *);
+static	struct CommandList *search4(struct CommandList *, int, Char *);
+static	struct CommandList *search5(struct CommandList *, int, Char *);
+static	struct CommandList *search6(struct CommandList *, int, Char *);
 static	int	getword		(struct Strbuf *);
 static	struct wordent	*histgetword	(struct wordent *);
 static	void	toend		(void);
+static	void	toend1		(void);
 static	void	xecho		(int, Char **);
 static	int	islocale_var	(Char *);
 static	void	wpfree		(struct whyle *);
@@ -134,7 +140,6 @@ func(struct command *t, const struct biltins *bp)
 {
     int     i;
 
-    fnptr = fntmp.next;
     if (bp->bfunct != doexit &&
 	bp->bfunct != dotest &&
 	bp->bfunct != dolet &&
@@ -370,7 +375,7 @@ doif(Char **v, struct command *kp)
 	 */
 	if (!i) {
 	    if (kp->t_dflg & F_LINE)
-		search1(TC_IF, 0);
+		search1(kp, 0, NULL);
 	    else
 		search(TC_IF, 0, NULL);
 	}
@@ -431,11 +436,10 @@ reexecute(struct command *kp)
 void
 doelse (Char **v, struct command *c)
 {
-    USE(c);
     USE(v);
     if (!noexec) {
 	if (c->t_dflg & F_LINE)
-	    search1(TC_ELSE, 0);
+	    search1(c, 0, NULL);
 	else
 	    search(TC_ELSE, 0, NULL);
     }
@@ -485,7 +489,6 @@ doswitch(Char **v, struct command *c)
 {
     Char *cp, *lp;
 
-    USE(c);
     v++;
     if (!*v || *(*v++) != '(')
 	stderror(ERR_SYNTAX);
@@ -496,8 +499,12 @@ doswitch(Char **v, struct command *c)
 	stderror(ERR_SYNTAX);
     lp = globone(cp, G_ERROR);
     cleanup_push(lp, xfree);
-    if (!noexec)
-	search(TC_SWITCH, 0, lp);
+    if (!noexec) {
+	if (c->t_dflg & F_LINE)
+	    search1(c, 0, lp);
+	else
+	    search(TC_SWITCH, 0, lp);
+    }
     cleanup_until(lp);
 }
 
@@ -506,7 +513,13 @@ void
 dobreak(Char **v, struct command *c)
 {
     USE(v);
-    USE(c);
+    if (c->t_dflg & F_LINE) {
+	if (0)
+	    stderror(ERR_NAME | ERR_NOTWHILE);
+	if (!noexec)
+	    toend1();
+	return;
+    }
     if (whyles == NULL)
 	stderror(ERR_NAME | ERR_NOTWHILE);
     if (!noexec)
@@ -573,6 +586,10 @@ doforeach(Char **v, struct command *c)
 	v = saveblk(v);
 	trim(v);
     }
+    if (c->t_dflg & F_LINE) {
+	search1(c, 0, NULL);
+	return;
+    }
     nwp = xcalloc(1, sizeof *nwp);
     nwp->w_fe = nwp->w_fe0 = v;
     btell(&nwp->w_start);
@@ -599,7 +616,6 @@ dowhile(Char **v, struct command *c)
 			  SEEKEQ(&whyles->w_start, &lineloc) &&
 			  whyles->w_fename == 0;
 
-    USE(c);
     v++;
     /*
      * Implement prereading here also, taking care not to evaluate the
@@ -613,6 +629,10 @@ dowhile(Char **v, struct command *c)
 	status = !expr(&v);
     if (*v && !noexec)
 	stderror(ERR_NAME | ERR_EXPRESSION);
+    if (c->t_dflg & F_LINE) {
+	search1(c, 0, NULL);
+	return;
+    }
     if (!again) {
 	struct whyle *nwp = xcalloc(1, sizeof(*nwp));
 
@@ -656,7 +676,16 @@ void
 doend(Char **v, struct command *c)
 {
     USE(v);
-    USE(c);
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = fnptr;
+	while (ptr->t != c)
+	    ptr = ptr->next;
+	if (ptr->enc == NULL)
+	    stderror(ERR_NAME | ERR_NOTWHILE);
+	return;
+    }
     if (!whyles)
 	stderror(ERR_NAME | ERR_NOTWHILE);
     btell(&whyles->w_end);
@@ -930,30 +959,220 @@ search(int type, int level, Char *goal)
 }
 
 static void
-search1(int type, int level)
+search1(struct command *t, int level, Char *goal)
+{
+    struct CommandList *ptr;
+
+    ptr = fnptr;
+    while (ptr->t != t)
+        ptr = ptr->next;
+    ptr->enc = search2(ptr, level, goal);
+    ptr->enc->enc = ptr;
+}
+
+static struct CommandList *
+search2(struct CommandList *lp, int level, Char *goal)
+{
+    switch(srchx(*lp->t->t_dcom)) {
+    case TC_IF:
+	return search3(lp->next, level + 1, goal);
+    case TC_SWITCH:
+	return search4(lp->next, level + 1, goal);
+    case TC_WHILE:
+	return search5(lp->next, level + 1, goal);
+    case TC_FOREACH:
+	return search6(lp->next, level + 1, goal);
+    }
+    return search2(lp->next, level, goal);
+}
+
+static struct CommandList *
+search3(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_ENDIF:
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_IF:
+	return lp->enc = search3(lp->next, level + 1, goal);
+    }
+    return search3(lp->next, level, goal);
+}
+
+static struct CommandList *
+search4(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "endsw");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_ENDSW:
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_SWITCH:
+	return lp->enc = search4(lp->next, level + 1, goal);
+    }
+    return search4(lp->next, level, goal);
+}
+
+static struct CommandList *
+search5(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "end");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_END:
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_WHILE:
+	return lp->enc = search5(lp->next, level + 1, goal);
+    }
+    return search5(lp->next, level, goal);
+}
+
+static struct CommandList *
+search6(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "end");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_END:
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_FOREACH:
+	return lp->enc = search6(lp->next, level + 1, goal);
+    }
+    return search6(lp->next, level, goal);
+}
+#if 0
+static struct CommandList *
+search2(struct CommandList *lp, int type, Char *goal)
+{
+    if (lp == &fntmp) {
+	switch (type) {
+	case TC_IF:
+	case TC_ELSE:
+	case TC_ENDIF:
+	    stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+	case TC_BREAK:
+	    stderror(ERR_NAME | ERR_NOTFOUND, "end");
+	}
+	stderror(ERR_SILENT);
+    }
+    switch (srchx(*lp->t->t_dcom)) {
+	Char **v;
+    case TC_ENDIF:
+	if (type == TC_ENDIF)
+	    return lp;
+	break;
+    case TC_ELSE:
+	if (0 && type == TC_IF)
+	    return fnptr;
+	break;
+    case TC_IF:
+	if (type == TC_ENDIF) {
+	    lp->enc = search1(lp->next, TC_IF, goal);
+	    lp->enc->enc = lp;
+	    return lp;
+	}
+	break;
+    case TC_END:
+	if (type == TC_BREAK)
+	    return fnptr;
+	break;
+    case TC_FOREACH:
+    case TC_WHILE:
+	if (type == TC_BREAK) {
+	    lp->enc = search1(lp->next, type, goal);
+	    lp->enc->enc = lp;
+	    return lp;
+	}
+	break;
+    case TC_ENDSW:
+	if (type == TC_SWITCH || type == TC_BRKSW)
+	    ;
+	break;
+    case TC_SWITCH:
+	if (type == TC_SWITCH || type == TC_BRKSW)
+	    ;
+	break;
+    case TC_LABEL:
+	v = fnptr->t->t_dcom;
+	if (type == TC_GOTO && ++v && eq(*v, goal))
+	    ;
+	break;
+    }
+    return search2(lp->next, type, goal);
+}
+#endif
+#if 0
+static void
+search1(struct command *t, int type, Char *goal)
 {
     struct CommandList tmp;
     struct CommandList *ptr;
+    int level;
 
+    level = -1;
     memset(ptr = &tmp, 0, sizeof tmp);
     ptr->next = ptr->prev = ptr;
     cleanup_push(&tmp, fntmp_cleanup);
-    while (level >= 0) {
-	fnptr = fnptr->next;
-	if (fnptr == &fntmp)
+    do {
+	if (fnptr == &fntmp) {
 	    switch (type) {
 	    case TC_IF:
 	    case TC_ELSE:
 		stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+	    case TC_BREAK:
+		stderror(ERR_NAME | ERR_NOTFOUND, "end");
 	    }
+	    stderror(ERR_SILENT);
+	}
 	switch (srchx(*fnptr->t->t_dcom)) {
+	    Char **v;
 	case TC_ENDIF:
 	    if (type == TC_IF || type == TC_ELSE)
 		level--;
 	    break;
 	case TC_ELSE:
-	    if (level == 0 || type == TC_IF)
+	    if (level == 0 && type == TC_IF)
 		goto end;
+	    break;
+	case TC_IF:
+	    if (type == TC_IF || type == TC_ELSE)
+		level++;
+	    break;
+	case TC_END:
+	    if (type == TC_BREAK)
+		level--;
+	    break;
+	case TC_FOREACH:
+	case TC_WHILE:
+	    if (type == TC_BREAK) {
+		struct CommandList *tmp;
+
+		if (fnptr->t == t)
+		    fnptr->enc = t;
+		level++;
+	    }
+	    break;
+	case TC_ENDSW:
+	    if (type == TC_SWITCH || type == TC_BRKSW)
+		level--;
+	    break;
+	case TC_SWITCH:
+	    if (type == TC_SWITCH || type == TC_BRKSW)
+		level++;
+	    break;
+	case TC_LABEL:
+	    v = fnptr->t->t_dcom;
+	    if (type == TC_GOTO && ++v && eq(*v, goal))
+		level = -1;
 	    break;
 	default:
 	    ptr->t = fnptr->t;
@@ -963,11 +1182,12 @@ search1(int type, int level)
 	    tmp.prev = ptr = ptr->next;
 	    ptr->next = &tmp;
 	}
-    }
+	fnptr = fnptr->next;
+    } while (level >= 0);
 end:
     cleanup_until(&tmp);
 }
-
+#endif
 static struct wordent *
 histgetword(struct wordent *histent)
 {
@@ -2963,4 +3183,10 @@ dotest(Char **v, struct command *c)
     if (*v != NULL)
 	stderror(ERR_NAME | ERR_EXPRESSION);
     setstatus(i);
+}
+
+void
+toend1(void)
+{
+    (void) 0;
 }
