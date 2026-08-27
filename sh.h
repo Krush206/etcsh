@@ -1280,6 +1280,7 @@ struct CommandList {
     struct command *t;
     struct CommandList *next;
     struct CommandList *prev;
+    struct CommandList *enc;
 };
 
 extern struct Function fnsrc;
