@@ -1281,6 +1281,7 @@ struct CommandList {
     struct CommandList *next;
     struct CommandList *prev;
     struct CommandList *enc;
+    int ret;
 };
 
 extern struct Function fnsrc;
