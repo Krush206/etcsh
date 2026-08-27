@@ -56,7 +56,7 @@ static	void	preread		(void);
 static	void	doagain		(void);
 static  const char *isrchx	(int);
 static	void	search		(int, int, Char *);
-static	void	search1		(struct command *, int, Char *);
+static	void	search1		(struct command *, int, int, Char *);
 static	struct CommandList *search2(struct CommandList *, int, Char *);
 static	struct CommandList *search3(struct CommandList *, int, Char *);
 static	struct CommandList *search4(struct CommandList *, int, Char *);
@@ -139,7 +139,13 @@ void
 func(struct command *t, const struct biltins *bp)
 {
     int     i;
+    struct CommandList *ptr;
 
+    ptr = fnptr;
+    while (ptr->t != t)
+	ptr = ptr->next;
+    if (ptr->enc != NULL && !ptr->enc->ret)
+	return;
     if (bp->bfunct != doexit &&
 	bp->bfunct != dotest &&
 	bp->bfunct != dolet &&
@@ -369,16 +375,16 @@ doif(Char **v, struct command *kp)
     v++;
     i = noexec ? 1 : !!expr(&v);
     if (*v == NULL) {
+	if (kp->t_dflg & F_LINE) {
+	    search1(kp, i, 0, NULL);
+	    return;
+	}
 	/*
 	 * If expression was zero, then scan to else , otherwise just fall into
 	 * following code.
 	 */
-	if (!i) {
-	    if (kp->t_dflg & F_LINE)
-		search1(kp, 0, NULL);
-	    else
-		search(TC_IF, 0, NULL);
-	}
+	if (!i)
+	    search(TC_IF, 0, NULL);
 	return;
     }
     /*
@@ -439,7 +445,7 @@ doelse (Char **v, struct command *c)
     USE(v);
     if (!noexec) {
 	if (c->t_dflg & F_LINE)
-	    search1(c, 0, NULL);
+	    search1(c, 0, 0, NULL);
 	else
 	    search(TC_ELSE, 0, NULL);
     }
@@ -501,7 +507,7 @@ doswitch(Char **v, struct command *c)
     cleanup_push(lp, xfree);
     if (!noexec) {
 	if (c->t_dflg & F_LINE)
-	    search1(c, 0, lp);
+	    search1(c, 0, 0, lp);
 	else
 	    search(TC_SWITCH, 0, lp);
     }
@@ -587,7 +593,7 @@ doforeach(Char **v, struct command *c)
 	trim(v);
     }
     if (c->t_dflg & F_LINE) {
-	search1(c, 0, NULL);
+	search1(c, 0, 0, NULL);
 	return;
     }
     nwp = xcalloc(1, sizeof *nwp);
@@ -630,7 +636,7 @@ dowhile(Char **v, struct command *c)
     if (*v && !noexec)
 	stderror(ERR_NAME | ERR_EXPRESSION);
     if (c->t_dflg & F_LINE) {
-	search1(c, 0, NULL);
+	search1(c, status, 0, NULL);
 	return;
     }
     if (!again) {
@@ -959,15 +965,21 @@ search(int type, int level, Char *goal)
 }
 
 static void
-search1(struct command *t, int level, Char *goal)
+search1(struct command *t, int ret, int level, Char *goal)
 {
     struct CommandList *ptr;
+    struct CommandList *end;
 
     ptr = fnptr;
     while (ptr->t != t)
         ptr = ptr->next;
     ptr->enc = search2(ptr, level, goal);
     ptr->enc->enc = ptr;
+    ptr->ret = ret;
+    ptr->enc->ret = ret;
+    end = ptr->enc;
+    for (ptr = ptr->next; ptr != end; ptr = ptr->next)
+	ptr->enc = end;
 }
 
 static struct CommandList *
@@ -975,6 +987,7 @@ search2(struct CommandList *lp, int level, Char *goal)
 {
     switch(srchx(*lp->t->t_dcom)) {
     case TC_IF:
+    case TC_ELSE:
 	return search3(lp->next, level + 1, goal);
     case TC_SWITCH:
 	return search4(lp->next, level + 1, goal);
