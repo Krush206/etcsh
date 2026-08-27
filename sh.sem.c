@@ -60,7 +60,6 @@ static	void		vffree		(int);
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
 static	void		 chkclob	(const char *);
-static	void		 fnlist		(struct command *);
 
 /*
  * C shell
@@ -735,16 +734,11 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	}
 	break;
     case NODE_FUNC:
-	cleanup_push(&fntmp, fntmp_cleanup);
-	omark = cleanup_push_mark();
 	fnptr = &fntmp;
-	fnlist(t);
 	if (t->t_dcar)
 	    execute(t->t_dcar, wanttty, NULL, NULL, do_glob);
 	if (t->t_dcdr)
 	    execute(t->t_dcdr, wanttty, NULL, NULL, do_glob);
-	cleanup_pop_mark(omark);
-	cleanup_until(&fntmp);
 	break;
     case NODE_OR:
     case NODE_AND:
@@ -1007,49 +1001,4 @@ chkclob(const char *cp)
     }
 
     stderror(ERR_EXISTS, cp);
-}
-
-static void
-fnlist(struct command *t)
-{
-    if (t->t_dtyp == NODE_PAREN) {
-	fnlist(t->t_dspr);
-	return;
-    }
-    if (t->t_dtyp != NODE_COMMAND) {
-	if (t->t_dcar)
-	    fnlist(t->t_dcar);
-	if (t->t_dcdr)
-	    fnlist(t->t_dcdr);
-	return;
-    }
-    if (t->t_dflg & F_LINE) {
-	struct CommandList *new;
-
-	new = xmalloc(sizeof *new);
-	new->next = &fntmp;
-	new->prev = fnptr;
-	new->t = t;
-	new->enc = NULL;
-	fntmp.prev = fnptr = fnptr->next = new;
-    }
-}
-
-void
-fntmp_cleanup(void *xptr)
-{
-    struct CommandList *ptr;
-    struct CommandList *hp;
-
-    hp = ptr = xptr;
-    ptr = ptr->next;
-    while (ptr != hp) {
-	struct CommandList *tmp;
-
-	tmp = ptr;
-	ptr->prev->next = ptr->next;
-	ptr->next->prev = ptr->prev;
-	ptr = ptr->next;
-	xfree(tmp);
-    }
 }
