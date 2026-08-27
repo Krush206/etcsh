@@ -51,7 +51,7 @@
 # endif /* !MACH && SYSVREL == 0 && !Lynx && !BSD4_4 && !glibc */
 #endif /* __sparc__ || sparc */
 
-struct CommandList fntmp = { NULL, &fntmp, &fntmp };
+struct CommandList fntmp = { NULL, &fntmp, &fntmp, NULL };
 struct CommandList *fnptr = &fntmp;
 
 #ifdef VFORK
@@ -1030,6 +1030,7 @@ fnlist(struct command *t)
 	new->next = &fntmp;
 	new->prev = fnptr;
 	new->t = t;
+	new->enc = NULL;
 	fntmp.prev = fnptr = fnptr->next = new;
     }
 }
