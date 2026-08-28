@@ -60,6 +60,7 @@ static	void		vffree		(int);
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
 static	void		 chkclob	(const char *);
+static	void		 fnlist		(struct command *, int, int);
 
 /*
  * C shell
@@ -187,6 +188,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	wanttty = 0;
     switch (t->t_dtyp) {
 	size_t omark;
+	struct CommandList *ptr;
     case NODE_COMMAND:
 	if ((t->t_dcom[0][0] & (QUOTE | TRIM)) == QUOTE)
 	    memmove(t->t_dcom[0], t->t_dcom[0] + 1,
@@ -734,11 +736,14 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	}
 	break;
     case NODE_FUNC:
-	fnptr = &fntmp;
-	if (t->t_dcar)
-	    execute(t->t_dcar, wanttty, NULL, NULL, do_glob);
-	if (t->t_dcdr)
-	    execute(t->t_dcdr, wanttty, NULL, NULL, do_glob);
+	cleanup_push(&fntmp, fntmp_cleanup);
+	omark = cleanup_push_mark();
+	ptr = fnptr = &fntmp;
+	fnlist(t, wanttty, do_glob);
+	for (ptr = ptr->next; ptr != &fntmp; ptr = ptr->next)
+	    execute(ptr->t, wanttty, NULL, NULL, do_glob);
+	cleanup_pop_mark(omark);
+	cleanup_until(&fntmp);
 	break;
     case NODE_OR:
     case NODE_AND:
@@ -1001,4 +1006,50 @@ chkclob(const char *cp)
     }
 
     stderror(ERR_EXISTS, cp);
+}
+
+static void
+fnlist(struct command *t, int wanttty, int do_glob)
+{
+    if (t->t_dtyp == NODE_PAREN) {
+	execute(t, wanttty, NULL, NULL, do_glob);
+	return;
+    }
+    if (t->t_dtyp != NODE_COMMAND) {
+	if (t->t_dcar)
+	    fnlist(t->t_dcar, wanttty, do_glob);
+	if (t->t_dcdr)
+	    fnlist(t->t_dcdr, wanttty, do_glob);
+	return;
+    }
+    if (t->t_dflg & F_LINE) {
+	struct CommandList *new;
+
+	new = xmalloc(sizeof *new);
+	new->next = &fntmp;
+	new->prev = fnptr;
+	new->t = t;
+	new->ret = 0;
+	new->enc = NULL;
+	fntmp.prev = fnptr = fnptr->next = new;
+    }
+}
+
+void
+fntmp_cleanup(void *xptr)
+{
+    struct CommandList *ptr;
+    struct CommandList *hp;
+
+    hp = ptr = xptr;
+    ptr = ptr->next;
+    while (ptr != hp) {
+	struct CommandList *tmp;
+
+	tmp = ptr;
+	ptr->prev->next = ptr->next;
+	ptr->next->prev = ptr->prev;
+	ptr = ptr->next;
+	xfree(tmp);
+    }
 }
