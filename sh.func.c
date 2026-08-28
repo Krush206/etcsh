@@ -71,6 +71,26 @@ static	int	islocale_var	(Char *);
 static	void	wpfree		(struct whyle *);
 static	void	fn_save		(struct saved_state *, int[2], Char **, Char *);
 static	void	fn_restore	(void *);
+static	int	srchenc		(struct CommandList *);
+
+static int
+srchenc(struct CommandList *lp)
+{
+    if (lp->enc == NULL)
+	return 0;
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_IF:
+	if (lp->enc->ret)
+	    return srchenc(lp->enc->next);
+	return 1;
+    case TC_ELSE:
+    case TC_ENDIF:
+	if (lp->enc->ret)
+	    return srchenc(lp->next);
+	return 1;
+    }
+    return srchenc(lp->next);
+}
 
 const struct biltins *
 isbfunc(struct command *t)
@@ -139,13 +159,16 @@ void
 func(struct command *t, const struct biltins *bp)
 {
     int     i;
-    struct CommandList *ptr;
 
-    ptr = fnptr;
-    while (ptr->t != t)
-	ptr = ptr->next;
-    if (ptr->enc != NULL && !ptr->enc->ret)
-	return;
+    if (t->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = fnptr;
+	while (ptr->t != t)
+	    ptr = ptr->next;
+	if (srchenc(ptr))
+	    return;
+    }
     if (bp->bfunct != doexit &&
 	bp->bfunct != dotest &&
 	bp->bfunct != dolet &&
