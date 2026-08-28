@@ -61,6 +61,9 @@ static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
 static	void		 chkclob	(const char *);
 static	void		 fnlist		(struct command *, int, int);
+static	int		 ctlpar		(struct CommandList *);
+static	int		 ctlpar1	(struct CommandList *);
+static	void		 fnalloc	(struct command *);
 
 /*
  * C shell
@@ -740,6 +743,8 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	omark = cleanup_push_mark();
 	ptr = fnptr = &fntmp;
 	fnlist(t, wanttty, do_glob);
+	if (ctlpar(ptr->next))
+	    stderror(ERR_CTLPAR);
 	for (ptr = ptr->next; ptr != &fntmp; ptr = ptr->next)
 	    execute(ptr->t, wanttty, NULL, NULL, do_glob);
 	cleanup_pop_mark(omark);
@@ -1012,7 +1017,7 @@ static void
 fnlist(struct command *t, int wanttty, int do_glob)
 {
     if (t->t_dtyp == NODE_PAREN) {
-	execute(t, wanttty, NULL, NULL, do_glob);
+	fnalloc(t);
 	return;
     }
     if (t->t_dtyp != NODE_COMMAND) {
@@ -1022,17 +1027,22 @@ fnlist(struct command *t, int wanttty, int do_glob)
 	    fnlist(t->t_dcdr, wanttty, do_glob);
 	return;
     }
-    if (t->t_dflg & F_LINE) {
-	struct CommandList *new;
+    if (t->t_dflg & F_LINE)
+	fnalloc(t);
+}
 
-	new = xmalloc(sizeof *new);
-	new->next = &fntmp;
-	new->prev = fnptr;
-	new->t = t;
-	new->ret = 0;
-	new->enc = NULL;
-	fntmp.prev = fnptr = fnptr->next = new;
-    }
+static void
+fnalloc(struct command *t)
+{
+    struct CommandList *new;
+
+    new = xmalloc(sizeof *new);
+    new->next = &fntmp;
+    new->prev = fnptr;
+    new->t = t;
+    new->ret = 0;
+    new->enc = NULL;
+    fntmp.prev = fnptr = fnptr->next = new;
 }
 
 void
@@ -1052,4 +1062,44 @@ fntmp_cleanup(void *xptr)
 	ptr = ptr->next;
 	xfree(tmp);
     }
+}
+
+static int
+ctlpar(struct CommandList *lp)
+{
+    struct CommandList *ptr;
+
+    ptr = lp;
+    if (ptr == &fntmp)
+	return 0;
+    if (ptr->t->t_dtyp == NODE_PAREN)
+	return ctlpar(ptr->next);
+    switch (srchx(*ptr->t->t_dcom)) {
+    case TC_IF:
+    case TC_ELSE:
+    case TC_SWITCH:
+    case TC_WHILE:
+    case TC_FOREACH:
+	return ctlpar1(ptr->next);
+    }
+    return ctlpar(ptr->next);
+}
+
+static int
+ctlpar1(struct CommandList *lp)
+{
+    struct CommandList *ptr;
+
+    ptr = lp;
+    if (ptr == &fntmp)
+	return 0;
+    if (ptr->t->t_dtyp == NODE_PAREN)
+	return 1;
+    switch (srchx(*ptr->t->t_dcom)) {
+    case TC_ENDIF:
+    case TC_ENDSW:
+    case TC_END:
+	return 0;
+    }
+    return ctlpar1(ptr->next);
 }
