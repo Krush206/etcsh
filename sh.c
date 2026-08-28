@@ -112,7 +112,6 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
-static	void		  fnlist	(struct command *);
 static	int		  srccat	(Char *, Char *);
 #ifndef WINNT_NATIVE
 static	int		  srcfile	(const char *, int, int, Char **);
@@ -2125,7 +2124,6 @@ process(int catch)
 	    stderror(ERR_OLD);
 	}
 	(void) list(t);
-	fnlist(t);
 
 	postcmd();
 	/*
@@ -2133,7 +2131,6 @@ process(int catch)
 	 * <mlschroe@immd4.informatik.uni-erlangen.de> was execute(t, tpgrp);
 	 */
 	execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
-	freefn(&fntmp);
 	freesyn(t);
 
 	/*
@@ -2533,50 +2530,4 @@ grabpgrp(int fd, pid_t desired)
     }
     errno = EPERM;
     return -1;
-}
-
-static void
-fnlist(struct command *t)
-{
-    if (t->t_dtyp == NODE_PAREN) {
-	fnlist(t->t_dspr);
-	return;
-    }
-    if (t->t_dtyp != NODE_COMMAND) {
-	if (t->t_dcar)
-	    fnlist(t->t_dcar);
-	if (t->t_dcdr)
-	    fnlist(t->t_dcdr);
-	return;
-    }
-    if (t->t_dflg & F_LINE) {
-	struct CommandList *new;
-
-	new = xmalloc(sizeof *new);
-	new->next = &fntmp;
-	new->prev = fnptr;
-	new->t = t;
-	new->ret = 0;
-	new->enc = NULL;
-	fntmp.prev = fnptr = fnptr->next = new;
-    }
-}
-
-void
-freefn(struct CommandList *tmp)
-{
-    struct CommandList *ptr;
-    struct CommandList *hp;
-
-    hp = ptr = tmp;
-    ptr = ptr->next;
-    while (ptr != hp) {
-	struct CommandList *tmp;
-
-	tmp = ptr;
-	ptr->prev->next = ptr->next;
-	ptr->next->prev = ptr->prev;
-	ptr = ptr->next;
-	xfree(tmp);
-    }
 }
