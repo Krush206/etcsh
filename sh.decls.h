@@ -54,7 +54,6 @@ extern	void		  xexit		(int) __attribute__((__noreturn__));
 extern	int		  grabpgrp	(int, pid_t);
 extern	void		  st_save	(struct saved_state *, int, int, Char **, Char **);
 extern	void		  st_restore	(void *);
-extern	void		  freefn	(struct CommandList *);
 
 /*
  * sh.dir.c
@@ -382,6 +381,7 @@ extern  struct process   *pfind		(Char *);
 extern	void		  execute	(struct command *, volatile int, int *,
 					 int *, int);
 extern	void		  mypipe	(int *);
+extern	void		  fntmp_cleanup	(void *);
 
 /*
  * sh.set.c
