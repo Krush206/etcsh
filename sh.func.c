@@ -72,24 +72,47 @@ static	void	wpfree		(struct whyle *);
 static	void	fn_save		(struct saved_state *, int[2], Char **, Char *);
 static	void	fn_restore	(void *);
 static	int	srchenc		(struct CommandList *);
+static	int	srchenc1	(struct CommandList *, struct CommandList *);
+static	int	srchenc2	(struct CommandList *, struct CommandList *);
 
 static int
 srchenc(struct CommandList *lp)
 {
     if (lp->enc == NULL)
 	return 0;
-    switch (srchx(*lp->t->t_dcom)) {
-    case TC_IF:
-	if (lp->enc->ret)
-	    return srchenc(lp->enc->next);
-	return 1;
-    case TC_ELSE:
-    case TC_ENDIF:
-	if (lp->enc->ret)
-	    return srchenc(lp->next);
-	return 1;
+    return srchenc1(lp->enc, lp);
+}
+
+static int
+srchenc1(struct CommandList *lp, struct CommandList *hp)
+{
+    struct CommandList *ptr;
+    struct CommandList *end;
+
+    end = lp;
+    ptr = end->enc;
+    while (ptr != end) {
+	if (srchx(*ptr->t->t_dcom) == TC_ELSE && !end->ret)
+	    return srchenc2(ptr->next, hp);
+	ptr = ptr->prev;
     }
-    return srchenc(lp->next);
+    return !ptr->ret;
+}
+
+static int
+srchenc2(struct CommandList *lp, struct CommandList *hp)
+{
+    struct CommandList *ptr;
+    struct CommandList *end;
+
+    ptr = lp;
+    end = ptr->enc->enc;
+    while (ptr != end) {
+	if (ptr == hp)
+	    return 0;
+	ptr = ptr->next;
+    }
+    return 1;
 }
 
 const struct biltins *
@@ -1000,7 +1023,7 @@ search1(struct command *t, int ret, int level, Char *goal)
     ptr->enc->enc = ptr;
     ptr->ret = ret;
     ptr->enc->ret = ret;
-    end = ptr->enc;
+    end = ptr->enc->enc;
     for (ptr = ptr->next; ptr != end; ptr = ptr->next)
 	ptr->enc = end;
 }
