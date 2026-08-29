@@ -51,7 +51,7 @@
 # endif /* !MACH && SYSVREL == 0 && !Lynx && !BSD4_4 && !glibc */
 #endif /* __sparc__ || sparc */
 
-struct CommandList fntmp = { { &fntmp, 0, 0 }, NULL, &fntmp, &fntmp, NULL, 0 };
+struct CommandList fntmp = { NULL, NULL, &fntmp, &fntmp, NULL, 0 };
 struct CommandList *fnptr = &fntmp;
 struct CommandList *wlptr = &fntmp;
 
@@ -1045,9 +1045,7 @@ fnalloc(struct command *t)
     new->t = t;
     new->ret = 0;
     new->enc = NULL;
-    new->wl.level = 0;
-    new->wl.ret = 0;
-    new->wl.next = NULL;
+    new->wl = NULL;
     fntmp.prev = fnptr = fnptr->next = new;
 }
 
@@ -1066,6 +1064,7 @@ fntmp_cleanup(void *xptr)
 	ptr->prev->next = ptr->next;
 	ptr->next->prev = ptr->prev;
 	ptr = ptr->next;
+	xfree(tmp->wl);
 	xfree(tmp);
     }
 }
@@ -1134,8 +1133,8 @@ wlexec(struct CommandList *lp, int wanttty, int do_glob)
     ret = 0;
     ptr = lp;
     while (ptr != &fntmp) {
-	if (ptr->wl.ret) {
-	    wlexec1(ptr->wl.next, wanttty, do_glob);
+	if (ptr->wl != NULL && ptr->wl->ret) {
+	    wlexec1(ptr, wanttty, do_glob);
 	    ret = 1;
 	}
 	ptr = ptr->next;
@@ -1152,7 +1151,7 @@ wlexec1(struct CommandList *lp, int wanttty, int do_glob)
 
     top = ptr = lp;
     end = top->enc;
-    while (top->wl.ret) {
+    while (top->wl->ret) {
 	if (ptr == end)
 	    ptr = top;
 	execute(ptr->t, wanttty, NULL, NULL, do_glob);
