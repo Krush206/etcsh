@@ -65,7 +65,6 @@ static	struct CommandList *search6(struct CommandList *, int, Char *);
 static	int	getword		(struct Strbuf *);
 static	struct wordent	*histgetword	(struct wordent *);
 static	void	toend		(void);
-static	void	toend1		(void);
 static	void	xecho		(int, Char **);
 static	int	islocale_var	(Char *);
 static	void	wpfree		(struct whyle *);
@@ -74,11 +73,15 @@ static	void	fn_restore	(void *);
 static	int	srchenc		(struct CommandList *);
 static	int	srchenc1	(struct CommandList *, struct CommandList *);
 static	int	srchenc2	(struct CommandList *, struct CommandList *);
+static	int	wltell		(struct CommandList *);
+static	void	wlbuild		(struct CommandList *);
 
 static int
 srchenc(struct CommandList *lp)
 {
     if (lp->enc == NULL)
+	return 0;
+    if (wlptr->wl.ret)
 	return 0;
     return srchenc1(lp->enc, lp);
 }
@@ -569,7 +572,7 @@ dobreak(Char **v, struct command *c)
 	if (0)
 	    stderror(ERR_NAME | ERR_NOTWHILE);
 	if (!noexec)
-	    toend1();
+	    ;
 	return;
     }
     if (whyles == NULL)
@@ -1026,6 +1029,12 @@ search1(struct command *t, int ret, int level, Char *goal)
     end = ptr->enc->enc;
     for (ptr = ptr->next; ptr != end; ptr = ptr->next)
 	ptr->enc = end;
+    for (ptr = fntmp.next; ptr != &fntmp; ptr = ptr->next)
+	if (wltell(ptr)) {
+	    wlbuild(ptr);
+	    ptr->wl.ret = !ret;
+	    wlptr = ptr;
+	}
 }
 
 static struct CommandList *
@@ -3244,8 +3253,34 @@ dotest(Char **v, struct command *c)
     setstatus(i);
 }
 
-void
-toend1(void)
+static int
+wltell(struct CommandList *lp)
 {
-    (void) 0;
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_FOREACH:
+    case TC_WHILE:
+	return 1;
+    }
+    return 0;
+}
+
+static void
+wlbuild(struct CommandList *lp)
+{
+    struct CommandList *end;
+    struct CommandList *ptr;
+    struct CommandList *next;
+
+    next = ptr = lp;
+    end = ptr->enc->enc;
+    if (wltell(end))
+	end = ptr->enc;
+    while (ptr != end) {
+	if (wltell(ptr)) {
+	    lp->wl.level++;
+	    next->wl.next = ptr;
+	    next = ptr;
+	}
+	ptr = ptr->next;
+    }
 }
