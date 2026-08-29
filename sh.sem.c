@@ -66,6 +66,8 @@ static	int		 ctlpar		(struct CommandList *);
 static	int		 ctlpar1	(struct CommandList *);
 static	void		 fnalloc	(struct command *);
 static	void		 fnexec		(struct CommandList *, int, int);
+static	int		 wlexec		(struct CommandList *, int, int);
+static	void		 wlexec1	(struct CommandList *, int, int);
 
 /*
  * C shell
@@ -193,7 +195,6 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	wanttty = 0;
     switch (t->t_dtyp) {
 	size_t omark;
-	struct CommandList *ptr;
     case NODE_COMMAND:
 	if ((t->t_dcom[0][0] & (QUOTE | TRIM)) == QUOTE)
 	    memmove(t->t_dcom[0], t->t_dcom[0] + 1,
@@ -748,8 +749,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	if (ctlpar(fntmp.next))
 	    stderror(ERR_CTLPAR);
 	wlptr = &fntmp;
-	for (ptr = fntmp.next; ptr != &fntmp; ptr = ptr->next)
-	    fnexec(ptr, wanttty, do_glob);
+	fnexec(fntmp.next, wanttty, do_glob);
 	cleanup_pop_mark(omark);
 	cleanup_until(&fntmp);
 	break;
@@ -1113,11 +1113,50 @@ ctlpar1(struct CommandList *lp)
 static void
 fnexec(struct CommandList *lp, int wanttty, int do_glob)
 {
-    do {
-	if (wlptr->wl.ret) {
-	    execute(wlptr->t, wanttty, NULL, NULL, do_glob);
-	    continue;
+    struct CommandList **next;
+    struct CommandList *ptr;
+
+    for (ptr = lp; ptr != &fntmp; ptr = (*next)->next) {
+	execute(ptr->t, wanttty, NULL, NULL, do_glob);
+	if (wlexec(ptr, wanttty, do_glob))
+	    next = &fnptr;
+	else
+	    next = &ptr;
+    }
+}
+
+static int
+wlexec(struct CommandList *lp, int wanttty, int do_glob)
+{
+    struct CommandList *ptr;
+    int ret;
+
+    ret = 0;
+    ptr = lp;
+    while (ptr != &fntmp) {
+	if (ptr->wl.ret) {
+	    wlexec1(ptr->wl.next, wanttty, do_glob);
+	    ret = 1;
 	}
-	execute(lp->t, wanttty, NULL, NULL, do_glob);
-    } while (wlptr->wl.ret);
+	ptr = ptr->next;
+    }
+    return ret;
+}
+
+static void
+wlexec1(struct CommandList *lp, int wanttty, int do_glob)
+{
+    struct CommandList *top;
+    struct CommandList *end;
+    struct CommandList *ptr;
+
+    top = ptr = lp;
+    end = top->enc;
+    while (top->wl.ret) {
+	if (ptr == end)
+	    ptr = top;
+	execute(ptr->t, wanttty, NULL, NULL, do_glob);
+	ptr = ptr->next;
+    }
+    fnptr = end;
 }
