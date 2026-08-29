@@ -51,8 +51,9 @@
 # endif /* !MACH && SYSVREL == 0 && !Lynx && !BSD4_4 && !glibc */
 #endif /* __sparc__ || sparc */
 
-struct CommandList fntmp = { NULL, &fntmp, &fntmp, NULL };
+struct CommandList fntmp = { { &fntmp, 0, 0 }, NULL, &fntmp, &fntmp, NULL, 0 };
 struct CommandList *fnptr = &fntmp;
+struct CommandList *wlptr = &fntmp;
 
 #ifdef VFORK
 static	void		vffree		(int);
@@ -64,6 +65,7 @@ static	void		 fnlist		(struct command *, int, int);
 static	int		 ctlpar		(struct CommandList *);
 static	int		 ctlpar1	(struct CommandList *);
 static	void		 fnalloc	(struct command *);
+static	void		 fnexec		(struct CommandList *, int, int);
 
 /*
  * C shell
@@ -741,12 +743,13 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
     case NODE_FUNC:
 	cleanup_push(&fntmp, fntmp_cleanup);
 	omark = cleanup_push_mark();
-	ptr = fnptr = &fntmp;
+	fnptr = &fntmp;
 	fnlist(t, wanttty, do_glob);
-	if (ctlpar(ptr->next))
+	if (ctlpar(fntmp.next))
 	    stderror(ERR_CTLPAR);
-	for (ptr = ptr->next; ptr != &fntmp; ptr = ptr->next)
-	    execute(ptr->t, wanttty, NULL, NULL, do_glob);
+	wlptr = &fntmp;
+	for (ptr = fntmp.next; ptr != &fntmp; ptr = ptr->next)
+	    fnexec(ptr, wanttty, do_glob);
 	cleanup_pop_mark(omark);
 	cleanup_until(&fntmp);
 	break;
@@ -1042,6 +1045,9 @@ fnalloc(struct command *t)
     new->t = t;
     new->ret = 0;
     new->enc = NULL;
+    new->wl.level = 0;
+    new->wl.ret = 0;
+    new->wl.next = NULL;
     fntmp.prev = fnptr = fnptr->next = new;
 }
 
@@ -1102,4 +1108,16 @@ ctlpar1(struct CommandList *lp)
 	return 0;
     }
     return ctlpar1(ptr->next);
+}
+
+static void
+fnexec(struct CommandList *lp, int wanttty, int do_glob)
+{
+    do {
+	if (wlptr->wl.ret) {
+	    execute(wlptr->t, wanttty, NULL, NULL, do_glob);
+	    continue;
+	}
+	execute(lp->t, wanttty, NULL, NULL, do_glob);
+    } while (wlptr->wl.ret);
 }
