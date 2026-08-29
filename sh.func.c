@@ -75,13 +75,12 @@ static	int	srchenc1	(struct CommandList *, struct CommandList *);
 static	int	srchenc2	(struct CommandList *, struct CommandList *);
 static	int	wltell		(struct CommandList *);
 static	void	wlbuild		(struct CommandList *);
+static	void	wlbuild1	(struct CommandList *, struct CommandList *);
 
 static int
 srchenc(struct CommandList *lp)
 {
     if (lp->enc == NULL)
-	return 0;
-    if (wlptr->wl.ret)
 	return 0;
     return srchenc1(lp->enc, lp);
 }
@@ -192,6 +191,8 @@ func(struct command *t, const struct biltins *bp)
 	ptr = fnptr;
 	while (ptr->t != t)
 	    ptr = ptr->next;
+	if (ptr->wl != NULL)
+	    return;
 	if (srchenc(ptr))
 	    return;
     }
@@ -1030,11 +1031,18 @@ search1(struct command *t, int ret, int level, Char *goal)
     for (ptr = ptr->next; ptr != end; ptr = ptr->next)
 	ptr->enc = end;
     for (ptr = fntmp.next; ptr != &fntmp; ptr = ptr->next)
+    {
 	if (wltell(ptr)) {
+	    ptr->wl = xmalloc(sizeof *ptr->wl);
+	    ptr->wl->level = 0;
 	    wlbuild(ptr);
-	    ptr->wl.ret = !ret;
+	    ptr->wl->ret = !ret;
 	    wlptr = ptr;
+	    continue;
 	}
+	if (wltell(ptr->enc))
+	    ptr->wl = ptr->enc->wl;
+    }
 }
 
 static struct CommandList *
@@ -3277,10 +3285,18 @@ wlbuild(struct CommandList *lp)
 	end = ptr->enc;
     while (ptr != end) {
 	if (wltell(ptr)) {
-	    lp->wl.level++;
-	    next->wl.next = ptr;
+	    lp->wl->level++;
+	    wlbuild1(ptr, next);
 	    next = ptr;
 	}
 	ptr = ptr->next;
     }
+}
+
+static void
+wlbuild1(struct CommandList *ptr, struct CommandList *next)
+{
+    if (next->wl == NULL)
+	next->wl = xmalloc(sizeof *next->wl);
+    next->wl->next = ptr;
 }
