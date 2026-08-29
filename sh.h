@@ -1277,6 +1277,11 @@ struct Function { /* Structure for dofunction. */
 };
 
 struct CommandList {
+    struct {
+	struct CommandList *next;
+	int level;
+	int ret;
+    } wl;
     struct command *t;
     struct CommandList *next;
     struct CommandList *prev;
@@ -1288,6 +1293,7 @@ extern struct Function fnsrc;
 
 extern struct CommandList fntmp;
 extern struct CommandList *fnptr;
+extern struct CommandList *wlptr;
 
 /*
  * This preserves the input state of the shell. It is used by
