@@ -1281,7 +1281,7 @@ struct CommandList {
 	struct CommandList *next;
 	int level;
 	int ret;
-    } wl;
+    } *wl;
     struct command *t;
     struct CommandList *next;
     struct CommandList *prev;
