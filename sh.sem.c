@@ -65,9 +65,26 @@ static	void		 fnlist		(struct command *, int, int);
 static	int		 ctlpar		(struct CommandList *);
 static	int		 ctlpar1	(struct CommandList *);
 static	void		 fnalloc	(struct command *);
-static	void		 fnexec		(struct CommandList *, int, int);
-static	int		 wlexec		(struct CommandList *, int, int);
-static	void		 wlexec1	(struct CommandList *, int, int);
+static	void		 fnexec		(struct CommandList *,
+					 volatile int,
+					 int);
+static	void		 wlexec		(struct CommandList **,
+					 volatile int,
+					 int);
+static	void		 wlexec1	(struct CommandList **,
+					 volatile int,
+					 int);
+static	void		 wlbuild	(struct CommandList *);
+static	void		 wlbuild1	(struct CommandList *,
+					 struct CommandList *);
+static	void		 wlbuild2	(struct CommandList *);
+static	void		 freewl		(struct CommandList *);
+static	void		 search		(struct CommandList *);
+static	struct CommandList *search1	(struct CommandList *, int, Char *);
+static	struct CommandList *search2	(struct CommandList *, int, Char *);
+static	struct CommandList *search3	(struct CommandList *, int, Char *);
+static	struct CommandList *search4	(struct CommandList *, int, Char *);
+static	struct CommandList *search5	(struct CommandList *, int, Char *);
 
 /*
  * C shell
@@ -1044,8 +1061,9 @@ fnalloc(struct command *t)
     new->prev = fnptr;
     new->t = t;
     new->ret = 0;
-    new->enc = NULL;
+    new->enc = &fntmp;
     new->wl = NULL;
+    new->type = 0;
     fntmp.prev = fnptr = fnptr->next = new;
 }
 
@@ -1060,12 +1078,27 @@ fntmp_cleanup(void *xptr)
     while (ptr != hp) {
 	struct CommandList *tmp;
 
-	tmp = ptr;
+	freewl(tmp = ptr);
 	ptr->prev->next = ptr->next;
 	ptr->next->prev = ptr->prev;
 	ptr = ptr->next;
 	xfree(tmp->wl);
 	xfree(tmp);
+    }
+}
+
+static void
+freewl(struct CommandList *lp)
+{
+    struct CommandList *ptr;
+    struct CommandList *wl;
+
+    wl = lp;
+    ptr = lp->next;
+    while (ptr != lp) {
+	if (ptr->wl == wl->wl)
+	    ptr->wl = NULL;
+	ptr = ptr->next;
     }
 }
 
@@ -1110,52 +1143,218 @@ ctlpar1(struct CommandList *lp)
 }
 
 static void
-fnexec(struct CommandList *lp, int wanttty, int do_glob)
-{
-    struct CommandList **next;
-    struct CommandList *ptr;
-
-    for (ptr = lp; ptr != &fntmp; ptr = (*next)->next) {
-	execute(ptr->t, wanttty, NULL, NULL, do_glob);
-	if (wlexec(ptr, wanttty, do_glob))
-	    next = &fnptr;
-	else
-	    next = &ptr;
-    }
-}
-
-static int
-wlexec(struct CommandList *lp, int wanttty, int do_glob)
+fnexec(struct CommandList *lp, volatile int wanttty, int do_glob)
 {
     struct CommandList *ptr;
-    int ret;
 
-    ret = 0;
-    ptr = lp;
-    while (ptr != &fntmp) {
-	if (ptr->wl != NULL && ptr->wl->ret) {
-	    wlexec1(ptr, wanttty, do_glob);
-	    ret = 1;
+    for (ptr = lp; ptr != &fntmp; ptr = ptr->next) {
+	const struct biltins *volatile bp;
+
+	if (ptr->enc != &fntmp)
+	    continue;
+	if ((bp = isbfunc(ptr->t)) &&
+	    (bp->bfunct == doif ||
+	     bp->bfunct == doswitch ||
+	     bp->bfunct == dowhile ||
+	     bp->bfunct == doforeach)) {
+	    setname(bp->bname);
+	    search(ptr);
 	}
-	ptr = ptr->next;
     }
-    return ret;
+    for (ptr = lp; ptr != &fntmp; ptr = ptr->next) {
+	execute(ptr->t, wanttty, NULL, NULL, do_glob);
+	switch (ptr->type) {
+	case TC_WHILE:
+	case TC_FOREACH:
+	    wlexec(&ptr, wanttty, do_glob);
+	}
+    }
 }
 
 static void
-wlexec1(struct CommandList *lp, int wanttty, int do_glob)
+wlexec(struct CommandList **lp, int wanttty, int do_glob)
+{
+    struct CommandList *ptr;
+    struct CommandList *top;
+
+    top = ptr = *lp;
+    while (ptr != &fntmp) {
+	if (ptr->wl != NULL && ptr->wl->ret) {
+	    wlexec1(&ptr, wanttty, do_glob);
+	    *lp = ptr;
+	}
+	ptr = ptr->next;
+    }
+    if (*lp == top)
+	*lp = (*lp)->enc;
+}
+
+static void
+wlexec1(struct CommandList **lp, int wanttty, int do_glob)
 {
     struct CommandList *top;
     struct CommandList *end;
     struct CommandList *ptr;
 
-    top = ptr = lp;
+    top = ptr = *lp;
     end = top->enc;
     while (top->wl->ret) {
 	if (ptr == end)
 	    ptr = top;
+	if (ptr->wl != NULL && ptr->wl->next != NULL)
+	    wlexec1(&ptr, wanttty, do_glob);
 	execute(ptr->t, wanttty, NULL, NULL, do_glob);
 	ptr = ptr->next;
     }
-    fnptr = end;
+    *lp = end;
+}
+
+static void
+search(struct CommandList *lp)
+{
+    struct CommandList *ptr;
+
+    ptr = lp;
+    ptr->enc = search1(ptr, 0, NULL);
+    if (ptr->enc == &fntmp)
+	return;
+    ptr->enc->enc = ptr;
+    switch (ptr->type) {
+    case TC_WHILE:
+    case TC_FOREACH:
+	wlbuild2(ptr);
+    }
+}
+
+static struct CommandList *
+search1(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	return lp;
+    switch(srchx(*lp->t->t_dcom)) {
+    case TC_IF:
+	lp->type = TC_IF;
+	return search2(lp->next, level + 1, goal);
+    case TC_ELSE:
+	lp->type = TC_ELSE;
+	return search2(lp->next, level + 1, goal);
+    case TC_SWITCH:
+	lp->type = TC_SWITCH;
+	return search3(lp->next, level + 1, goal);
+    case TC_WHILE:
+	lp->type = TC_WHILE;
+	return search4(lp->next, level + 1, goal);
+    case TC_FOREACH:
+	lp->type = TC_FOREACH;
+	return search5(lp->next, level + 1, goal);
+    }
+    return search1(lp->next, level, goal);
+}
+
+static struct CommandList *
+search2(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_ENDIF:
+	lp->type = TC_ENDIF;
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_IF:
+	lp->type = TC_IF;
+	return lp->enc = search2(lp->next, level + 1, goal);
+    }
+    return search2(lp->next, level, goal);
+}
+
+static struct CommandList *
+search3(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "endsw");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_ENDSW:
+	lp->type = TC_ENDSW;
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_SWITCH:
+	lp->type = TC_SWITCH;
+	return lp->enc = search3(lp->next, level + 1, goal);
+    }
+    return search3(lp->next, level, goal);
+}
+
+static struct CommandList *
+search4(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "end");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_END:
+	lp->type = TC_END;
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_WHILE:
+	lp->type = TC_WHILE;
+	return lp->enc = search4(lp->next, level + 1, goal);
+    }
+    return search4(lp->next, level, goal);
+}
+
+static struct CommandList *
+search5(struct CommandList *lp, int level, Char *goal)
+{
+    if (lp == &fntmp)
+	stderror(ERR_NAME | ERR_NOTFOUND, "end");
+    switch (srchx(*lp->t->t_dcom)) {
+    case TC_END:
+	lp->type = TC_END;
+	if (--level == 0)
+	    return lp;
+	break;
+    case TC_FOREACH:
+	lp->type = TC_FOREACH;
+	return lp->enc = search5(lp->next, level + 1, goal);
+    }
+    return search5(lp->next, level, goal);
+}
+
+static void
+wlbuild(struct CommandList *lp)
+{
+    struct CommandList *end;
+    struct CommandList *ptr;
+    struct CommandList *next;
+
+    next = ptr = lp;
+    end = ptr->enc->enc;
+    if (ktell(end) == 1)
+	end = ptr->enc;
+    while (ptr != end) {
+	if (ktell(ptr) == 1) {
+	    wlbuild1(ptr, next);
+	    next = ptr;
+	}
+	ptr = ptr->next;
+    }
+}
+
+static void
+wlbuild1(struct CommandList *ptr, struct CommandList *next)
+{
+    if (next->wl == NULL)
+	next->wl = xmalloc(sizeof *next->wl);
+    next->wl->next = next;
+    if (ptr == next)
+	next->wl->next = NULL;
+}
+
+static void
+wlbuild2(struct CommandList *ptr)
+{
+    xprintf("%s\n", short2str(*ptr->t->t_dcom));
 }
