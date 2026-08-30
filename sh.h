@@ -1277,15 +1277,14 @@ struct Function { /* Structure for dofunction. */
 };
 
 struct CommandList {
-    struct {
-	struct CommandList *next;
-	int ret;
-    } *wl;
+    union {
+	int status;
+	Char *label;
+    } ret;
     struct command *t;
     struct CommandList *next;
     struct CommandList *prev;
     struct CommandList *enc;
-    int ret;
     int type;
 };
 
