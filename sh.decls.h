@@ -190,7 +190,6 @@ extern	void		  dobuiltins	(Char **, struct command *);
 extern	void		  reexecute	(struct command *);
 extern  int		  getYN		(const char *);
 extern	void		  dotest	(Char **, struct command *);
-extern	int		  ktell		(struct CommandList *);
 extern	struct CommandList *rlist	(struct command *);
 
 /*
