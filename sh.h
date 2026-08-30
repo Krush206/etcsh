@@ -1279,7 +1279,6 @@ struct Function { /* Structure for dofunction. */
 struct CommandList {
     struct {
 	struct CommandList *next;
-	int level;
 	int ret;
     } *wl;
     struct command *t;
@@ -1287,6 +1286,7 @@ struct CommandList {
     struct CommandList *prev;
     struct CommandList *enc;
     int ret;
+    int type;
 };
 
 extern struct Function fnsrc;
