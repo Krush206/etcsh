@@ -56,12 +56,6 @@ static	void	preread		(void);
 static	void	doagain		(void);
 static  const char *isrchx	(int);
 static	void	search		(int, int, Char *);
-static	void	search1		(struct command *, int, int, Char *);
-static	struct CommandList *search2(struct CommandList *, int, Char *);
-static	struct CommandList *search3(struct CommandList *, int, Char *);
-static	struct CommandList *search4(struct CommandList *, int, Char *);
-static	struct CommandList *search5(struct CommandList *, int, Char *);
-static	struct CommandList *search6(struct CommandList *, int, Char *);
 static	int	getword		(struct Strbuf *);
 static	struct wordent	*histgetword	(struct wordent *);
 static	void	toend		(void);
@@ -73,49 +67,6 @@ static	void	fn_restore	(void *);
 static	int	srchenc		(struct CommandList *);
 static	int	srchenc1	(struct CommandList *, struct CommandList *);
 static	int	srchenc2	(struct CommandList *, struct CommandList *);
-static	int	wltell		(struct CommandList *);
-static	void	wlbuild		(struct CommandList *);
-static	void	wlbuild1	(struct CommandList *, struct CommandList *);
-
-static int
-srchenc(struct CommandList *lp)
-{
-    if (lp->enc == NULL)
-	return 0;
-    return srchenc1(lp->enc, lp);
-}
-
-static int
-srchenc1(struct CommandList *lp, struct CommandList *hp)
-{
-    struct CommandList *ptr;
-    struct CommandList *end;
-
-    end = lp;
-    ptr = end->enc;
-    while (ptr != end) {
-	if (srchx(*ptr->t->t_dcom) == TC_ELSE && !end->ret)
-	    return srchenc2(ptr->next, hp);
-	ptr = ptr->prev;
-    }
-    return !ptr->ret;
-}
-
-static int
-srchenc2(struct CommandList *lp, struct CommandList *hp)
-{
-    struct CommandList *ptr;
-    struct CommandList *end;
-
-    ptr = lp;
-    end = ptr->enc->enc;
-    while (ptr != end) {
-	if (ptr == hp)
-	    return 0;
-	ptr = ptr->next;
-    }
-    return 1;
-}
 
 const struct biltins *
 isbfunc(struct command *t)
@@ -191,8 +142,6 @@ func(struct command *t, const struct biltins *bp)
 	ptr = fnptr;
 	while (ptr->t != t)
 	    ptr = ptr->next;
-	if (ptr->wl != NULL)
-	    return;
 	if (srchenc(ptr))
 	    return;
     }
@@ -426,7 +375,10 @@ doif(Char **v, struct command *kp)
     i = noexec ? 1 : !!expr(&v);
     if (*v == NULL) {
 	if (kp->t_dflg & F_LINE) {
-	    search1(kp, i, 0, NULL);
+	    struct CommandList *ptr;
+
+	    ptr = rlist(kp);
+	    ptr->ret = i;
 	    return;
 	}
 	/*
@@ -495,9 +447,8 @@ doelse (Char **v, struct command *c)
     USE(v);
     if (!noexec) {
 	if (c->t_dflg & F_LINE)
-	    search1(c, 0, 0, NULL);
-	else
-	    search(TC_ELSE, 0, NULL);
+	    return;
+	search(TC_ELSE, 0, NULL);
     }
 }
 
@@ -555,12 +506,8 @@ doswitch(Char **v, struct command *c)
 	stderror(ERR_SYNTAX);
     lp = globone(cp, G_ERROR);
     cleanup_push(lp, xfree);
-    if (!noexec) {
-	if (c->t_dflg & F_LINE)
-	    search1(c, 0, 0, lp);
-	else
-	    search(TC_SWITCH, 0, lp);
-    }
+    if (!noexec && c->t_dflg ^ F_LINE)
+	search(TC_SWITCH, 0, lp);
     cleanup_until(lp);
 }
 
@@ -642,10 +589,8 @@ doforeach(Char **v, struct command *c)
 	v = saveblk(v);
 	trim(v);
     }
-    if (c->t_dflg & F_LINE) {
-	search1(c, 0, 0, NULL);
+    if (c->t_dflg & F_LINE)
 	return;
-    }
     nwp = xcalloc(1, sizeof *nwp);
     nwp->w_fe = nwp->w_fe0 = v;
     btell(&nwp->w_start);
@@ -686,7 +631,10 @@ dowhile(Char **v, struct command *c)
     if (*v && !noexec)
 	stderror(ERR_NAME | ERR_EXPRESSION);
     if (c->t_dflg & F_LINE) {
-	search1(c, status, 0, NULL);
+	struct CommandList *ptr;
+
+	ptr = rlist(c);
+	ptr->ret = status;
 	return;
     }
     if (!again) {
@@ -1014,256 +962,6 @@ search(int type, int level, Char *goal)
     cleanup_until(&word);
 }
 
-static void
-search1(struct command *t, int ret, int level, Char *goal)
-{
-    struct CommandList *ptr;
-    struct CommandList *end;
-
-    ptr = fnptr;
-    while (ptr->t != t)
-        ptr = ptr->next;
-    ptr->enc = search2(ptr, level, goal);
-    ptr->enc->enc = ptr;
-    ptr->ret = ret;
-    ptr->enc->ret = ret;
-    end = ptr->enc->enc;
-    for (ptr = ptr->next; ptr != end; ptr = ptr->next)
-	ptr->enc = end;
-    for (ptr = fntmp.next; ptr != &fntmp; ptr = ptr->next)
-    {
-	if (wltell(ptr)) {
-	    ptr->wl = xmalloc(sizeof *ptr->wl);
-	    ptr->wl->level = 0;
-	    wlbuild(ptr);
-	    ptr->wl->ret = !ret;
-	    wlptr = ptr;
-	    continue;
-	}
-	if (wltell(ptr->enc))
-	    ptr->wl = ptr->enc->wl;
-    }
-}
-
-static struct CommandList *
-search2(struct CommandList *lp, int level, Char *goal)
-{
-    switch(srchx(*lp->t->t_dcom)) {
-    case TC_IF:
-    case TC_ELSE:
-	return search3(lp->next, level + 1, goal);
-    case TC_SWITCH:
-	return search4(lp->next, level + 1, goal);
-    case TC_WHILE:
-	return search5(lp->next, level + 1, goal);
-    case TC_FOREACH:
-	return search6(lp->next, level + 1, goal);
-    }
-    return search2(lp->next, level, goal);
-}
-
-static struct CommandList *
-search3(struct CommandList *lp, int level, Char *goal)
-{
-    if (lp == &fntmp)
-	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
-    switch (srchx(*lp->t->t_dcom)) {
-    case TC_ENDIF:
-	if (--level == 0)
-	    return lp;
-	break;
-    case TC_IF:
-	return lp->enc = search3(lp->next, level + 1, goal);
-    }
-    return search3(lp->next, level, goal);
-}
-
-static struct CommandList *
-search4(struct CommandList *lp, int level, Char *goal)
-{
-    if (lp == &fntmp)
-	stderror(ERR_NAME | ERR_NOTFOUND, "endsw");
-    switch (srchx(*lp->t->t_dcom)) {
-    case TC_ENDSW:
-	if (--level == 0)
-	    return lp;
-	break;
-    case TC_SWITCH:
-	return lp->enc = search4(lp->next, level + 1, goal);
-    }
-    return search4(lp->next, level, goal);
-}
-
-static struct CommandList *
-search5(struct CommandList *lp, int level, Char *goal)
-{
-    if (lp == &fntmp)
-	stderror(ERR_NAME | ERR_NOTFOUND, "end");
-    switch (srchx(*lp->t->t_dcom)) {
-    case TC_END:
-	if (--level == 0)
-	    return lp;
-	break;
-    case TC_WHILE:
-	return lp->enc = search5(lp->next, level + 1, goal);
-    }
-    return search5(lp->next, level, goal);
-}
-
-static struct CommandList *
-search6(struct CommandList *lp, int level, Char *goal)
-{
-    if (lp == &fntmp)
-	stderror(ERR_NAME | ERR_NOTFOUND, "end");
-    switch (srchx(*lp->t->t_dcom)) {
-    case TC_END:
-	if (--level == 0)
-	    return lp;
-	break;
-    case TC_FOREACH:
-	return lp->enc = search6(lp->next, level + 1, goal);
-    }
-    return search6(lp->next, level, goal);
-}
-#if 0
-static struct CommandList *
-search2(struct CommandList *lp, int type, Char *goal)
-{
-    if (lp == &fntmp) {
-	switch (type) {
-	case TC_IF:
-	case TC_ELSE:
-	case TC_ENDIF:
-	    stderror(ERR_NAME | ERR_NOTFOUND, "endif");
-	case TC_BREAK:
-	    stderror(ERR_NAME | ERR_NOTFOUND, "end");
-	}
-	stderror(ERR_SILENT);
-    }
-    switch (srchx(*lp->t->t_dcom)) {
-	Char **v;
-    case TC_ENDIF:
-	if (type == TC_ENDIF)
-	    return lp;
-	break;
-    case TC_ELSE:
-	if (0 && type == TC_IF)
-	    return fnptr;
-	break;
-    case TC_IF:
-	if (type == TC_ENDIF) {
-	    lp->enc = search1(lp->next, TC_IF, goal);
-	    lp->enc->enc = lp;
-	    return lp;
-	}
-	break;
-    case TC_END:
-	if (type == TC_BREAK)
-	    return fnptr;
-	break;
-    case TC_FOREACH:
-    case TC_WHILE:
-	if (type == TC_BREAK) {
-	    lp->enc = search1(lp->next, type, goal);
-	    lp->enc->enc = lp;
-	    return lp;
-	}
-	break;
-    case TC_ENDSW:
-	if (type == TC_SWITCH || type == TC_BRKSW)
-	    ;
-	break;
-    case TC_SWITCH:
-	if (type == TC_SWITCH || type == TC_BRKSW)
-	    ;
-	break;
-    case TC_LABEL:
-	v = fnptr->t->t_dcom;
-	if (type == TC_GOTO && ++v && eq(*v, goal))
-	    ;
-	break;
-    }
-    return search2(lp->next, type, goal);
-}
-#endif
-#if 0
-static void
-search1(struct command *t, int type, Char *goal)
-{
-    struct CommandList tmp;
-    struct CommandList *ptr;
-    int level;
-
-    level = -1;
-    memset(ptr = &tmp, 0, sizeof tmp);
-    ptr->next = ptr->prev = ptr;
-    cleanup_push(&tmp, fntmp_cleanup);
-    do {
-	if (fnptr == &fntmp) {
-	    switch (type) {
-	    case TC_IF:
-	    case TC_ELSE:
-		stderror(ERR_NAME | ERR_NOTFOUND, "endif");
-	    case TC_BREAK:
-		stderror(ERR_NAME | ERR_NOTFOUND, "end");
-	    }
-	    stderror(ERR_SILENT);
-	}
-	switch (srchx(*fnptr->t->t_dcom)) {
-	    Char **v;
-	case TC_ENDIF:
-	    if (type == TC_IF || type == TC_ELSE)
-		level--;
-	    break;
-	case TC_ELSE:
-	    if (level == 0 && type == TC_IF)
-		goto end;
-	    break;
-	case TC_IF:
-	    if (type == TC_IF || type == TC_ELSE)
-		level++;
-	    break;
-	case TC_END:
-	    if (type == TC_BREAK)
-		level--;
-	    break;
-	case TC_FOREACH:
-	case TC_WHILE:
-	    if (type == TC_BREAK) {
-		struct CommandList *tmp;
-
-		if (fnptr->t == t)
-		    fnptr->enc = t;
-		level++;
-	    }
-	    break;
-	case TC_ENDSW:
-	    if (type == TC_SWITCH || type == TC_BRKSW)
-		level--;
-	    break;
-	case TC_SWITCH:
-	    if (type == TC_SWITCH || type == TC_BRKSW)
-		level++;
-	    break;
-	case TC_LABEL:
-	    v = fnptr->t->t_dcom;
-	    if (type == TC_GOTO && ++v && eq(*v, goal))
-		level = -1;
-	    break;
-	default:
-	    ptr->t = fnptr->t;
-	    ptr->t->t_dflg |= F_SKIP;
-	    ptr->next = xmalloc(sizeof *ptr);
-	    ptr->next->prev = ptr;
-	    tmp.prev = ptr = ptr->next;
-	    ptr->next = &tmp;
-	}
-	fnptr = fnptr->next;
-    } while (level >= 0);
-end:
-    cleanup_until(&tmp);
-}
-#endif
 static struct wordent *
 histgetword(struct wordent *histent)
 {
@@ -3261,42 +2959,81 @@ dotest(Char **v, struct command *c)
     setstatus(i);
 }
 
-static int
-wltell(struct CommandList *lp)
+int
+ktell(struct CommandList *lp)
 {
     switch (srchx(*lp->t->t_dcom)) {
     case TC_FOREACH:
     case TC_WHILE:
+    case TC_IF:
+    case TC_SWITCH:
 	return 1;
+    case TC_ENDIF:
+    case TC_END:
+    case TC_ENDSW:
+	return 2;
     }
     return 0;
 }
 
-static void
-wlbuild(struct CommandList *lp)
+static int
+srchenc(struct CommandList *lp)
 {
-    struct CommandList *end;
     struct CommandList *ptr;
-    struct CommandList *next;
 
-    next = ptr = lp;
-    end = ptr->enc->enc;
-    if (wltell(end))
-	end = ptr->enc;
-    while (ptr != end) {
-	if (wltell(ptr)) {
-	    lp->wl->level++;
-	    wlbuild1(ptr, next);
-	    next = ptr;
-	}
-	ptr = ptr->next;
-    }
+    ptr = lp;
+    if (ptr->enc == &fntmp)
+	return 0;
+    if (ptr->enc->wl != NULL)
+	return 0;
+    return srchenc1(ptr->enc, lp);
 }
 
-static void
-wlbuild1(struct CommandList *ptr, struct CommandList *next)
+static int
+srchenc1(struct CommandList *lp, struct CommandList *hp)
 {
-    if (next->wl == NULL)
-	next->wl = xmalloc(sizeof *next->wl);
-    next->wl->next = ptr;
+    struct CommandList *ptr;
+    struct CommandList *end;
+
+    ptr = lp;
+    switch (ktell(ptr)) {
+    case 1:
+	end = ptr;
+	ptr = ptr->enc;
+    case 2:
+	end = ptr->enc;
+    }
+    while (ptr != end) {
+	if (ptr->type == TC_ELSE && !end->ret)
+	    return srchenc2(ptr->next, hp);
+	ptr = ptr->prev;
+    }
+    return !ptr->ret;
+}
+
+static int
+srchenc2(struct CommandList *lp, struct CommandList *hp)
+{
+    struct CommandList *ptr;
+    struct CommandList *end;
+
+    ptr = lp;
+    end = ptr->enc->enc;
+    while (ptr != end) {
+	if (ptr == hp)
+	    return 0;
+	ptr = ptr->next;
+    }
+    return 1;
+}
+
+struct CommandList *
+rlist(struct command *t)
+{
+    struct CommandList *ptr;
+
+    ptr = fnptr;
+    while (ptr->t != t)
+	ptr = ptr->next;
+    return ptr;
 }
