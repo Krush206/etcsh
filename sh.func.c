@@ -136,15 +136,6 @@ func(struct command *t, const struct biltins *bp)
 {
     int     i;
 
-    if (t->t_dflg & F_LINE) {
-	struct CommandList *ptr;
-
-	ptr = fnptr;
-	while (ptr->t != t)
-	    ptr = ptr->next;
-	if (srchenc(ptr))
-	    return;
-    }
     if (bp->bfunct != doexit &&
 	bp->bfunct != dotest &&
 	bp->bfunct != dolet &&
@@ -378,7 +369,7 @@ doif(Char **v, struct command *kp)
 	    struct CommandList *ptr;
 
 	    ptr = rlist(kp);
-	    ptr->ret = i;
+	    ptr->enc->ret.status = ptr->ret.status = i;
 	    return;
 	}
 	/*
@@ -634,7 +625,7 @@ dowhile(Char **v, struct command *c)
 	struct CommandList *ptr;
 
 	ptr = rlist(c);
-	ptr->ret = status;
+	ptr->enc->ret.status = ptr->ret.status = status;
 	return;
     }
     if (!again) {
@@ -2957,74 +2948,6 @@ dotest(Char **v, struct command *c)
     if (*v != NULL)
 	stderror(ERR_NAME | ERR_EXPRESSION);
     setstatus(i);
-}
-
-int
-ktell(struct CommandList *lp)
-{
-    switch (srchx(*lp->t->t_dcom)) {
-    case TC_FOREACH:
-    case TC_WHILE:
-    case TC_IF:
-    case TC_SWITCH:
-	return 1;
-    case TC_ENDIF:
-    case TC_END:
-    case TC_ENDSW:
-	return 2;
-    }
-    return 0;
-}
-
-static int
-srchenc(struct CommandList *lp)
-{
-    struct CommandList *ptr;
-
-    ptr = lp;
-    if (ptr->enc == &fntmp)
-	return 0;
-    if (ptr->enc->wl != NULL)
-	return 0;
-    return srchenc1(ptr->enc, lp);
-}
-
-static int
-srchenc1(struct CommandList *lp, struct CommandList *hp)
-{
-    struct CommandList *ptr;
-    struct CommandList *end;
-
-    ptr = lp;
-    switch (ktell(ptr)) {
-    case 1:
-	end = ptr;
-	ptr = ptr->enc;
-    case 2:
-	end = ptr->enc;
-    }
-    while (ptr != end) {
-	if (ptr->type == TC_ELSE && !end->ret)
-	    return srchenc2(ptr->next, hp);
-	ptr = ptr->prev;
-    }
-    return !ptr->ret;
-}
-
-static int
-srchenc2(struct CommandList *lp, struct CommandList *hp)
-{
-    struct CommandList *ptr;
-    struct CommandList *end;
-
-    ptr = lp;
-    end = ptr->enc->enc;
-    while (ptr != end) {
-	if (ptr == hp)
-	    return 0;
-	ptr = ptr->next;
-    }
-    return 1;
 }
 
 struct CommandList *
