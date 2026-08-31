@@ -51,9 +51,17 @@
 # endif /* !MACH && SYSVREL == 0 && !Lynx && !BSD4_4 && !glibc */
 #endif /* __sparc__ || sparc */
 
-struct CommandList fntmp = { { 0 }, NULL, &fntmp, &fntmp, NULL };
+struct CommandList fntmp = { NULL,
+			     &fntmp,
+			     &fntmp,
+			     NULL,
+			     0,
+			     0,
+			     NULL,
+			     NULL,
+			     NULL,
+			     NULL };
 struct CommandList *fnptr = &fntmp;
-struct CommandList *wlptr = &fntmp;
 
 #ifdef VFORK
 static	void		vffree		(int);
@@ -68,13 +76,16 @@ static	void		 fnalloc	(struct command *);
 static	void		 fnexec		(struct CommandList *,
 					 volatile int,
 					 int);
+static	void		 fnexec1	(struct CommandList *);
 static	void		 wlexec		(struct CommandList **,
 					 volatile int,
 					 int);
 static	void		 wlexec1	(struct CommandList **,
 					 volatile int,
 					 int);
-static	void		 freewl		(struct CommandList *);
+static	void		 feexec		(struct CommandList **,
+					 volatile int,
+					 int);
 static	void		 search		(struct CommandList *);
 static	struct CommandList *search1	(struct CommandList *, int, Char *);
 static	struct CommandList *search2	(struct CommandList *, int, Char *);
@@ -768,7 +779,6 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	fnlist(t, wanttty, do_glob);
 	if (ctlpar(fntmp.next))
 	    stderror(ERR_CTLPAR);
-	wlptr = &fntmp;
 	fnexec(fntmp.next, wanttty, do_glob);
 	cleanup_pop_mark(omark);
 	cleanup_until(&fntmp);
@@ -1063,8 +1073,12 @@ fnalloc(struct command *t)
     new->next = &fntmp;
     new->prev = fnptr;
     new->t = t;
-    new->ret.status = 0;
+    new->ret = 0;
     new->enc = NULL;
+    new->label = NULL;
+    new->name = NULL;
+    new->vec = NULL;
+    new->vec0 = NULL;
     new->type = -1;
     fntmp.prev = fnptr = fnptr->next = new;
 }
@@ -1134,25 +1148,33 @@ fnexec(struct CommandList *lp, volatile int wanttty, int do_glob)
     struct CommandList *ptr;
 
     for (ptr = lp; ptr != &fntmp; ptr = ptr->next) {
-	const struct biltins *volatile bp;
-
-	if ((bp = isbfunc(ptr->t)) &&
-	    (bp->bfunct == doif ||
-	     bp->bfunct == doelse ||
-	     bp->bfunct == doswitch ||
-	     bp->bfunct == dowhile ||
-	     bp->bfunct == doforeach)) {
-	    setname(bp->bname);
-	    search(ptr);
-	}
+	fnexec1(ptr);
 	execute(ptr->t, wanttty, NULL, NULL, do_glob);
 	switch (ptr->type) {
-	case TC_WHILE:
 	case TC_FOREACH:
+	    feexec(&ptr, wanttty, do_glob);
+	    break;
+	case TC_WHILE:
 	    wlexec(&ptr, wanttty, do_glob);
 	    continue;
 	}
 	kret(&ptr);
+    }
+}
+
+static void
+fnexec1(struct CommandList *ptr)
+{
+    const struct biltins *volatile bp;
+
+    if ((bp = isbfunc(ptr->t)) &&
+	(bp->bfunct == doif ||
+	 bp->bfunct == doelse ||
+	 bp->bfunct == doswitch ||
+	 bp->bfunct == dowhile ||
+	 bp->bfunct == doforeach)) {
+	setname(bp->bname);
+	search(ptr);
     }
 }
 
@@ -1166,25 +1188,15 @@ wlexec(struct CommandList **lp, volatile int wanttty, int do_glob)
     top = ptr = *lp;
     end = top->enc;
     ptr = ptr->next;
-    if (top->ret.status) {
+    if (top->ret) {
 	kret(lp);
 	return;
     }
     while (ptr != end) {
-	const struct biltins *volatile bp;
-
-	if ((bp = isbfunc(ptr->t)) &&
-	    (bp->bfunct == doif ||
-	     bp->bfunct == doelse ||
-	     bp->bfunct == doswitch ||
-	     bp->bfunct == dowhile ||
-	     bp->bfunct == doforeach)) {
-	    setname(bp->bname);
-	    search(ptr);
-	}
+	fnexec1(ptr);
 	ptr = ptr->next;
     }
-    while (!top->ret.status) {
+    while (!top->ret) {
 	if (ptr == end)
 	    ptr = top;
 	execute(ptr->t, wanttty, NULL, NULL, do_glob);
@@ -1204,9 +1216,46 @@ wlexec1(struct CommandList **lp, volatile int wanttty, int do_glob)
     ptr = (*lp)->enc;
     switch (ptr->type) {
     case TC_WHILE:
-    case TC_FOREACH:
 	*lp = ptr;
 	wlexec(lp, wanttty, do_glob);
+	break;
+    case TC_FOREACH:
+	*lp = ptr;
+	feexec(lp, wanttty, do_glob);
+    }
+}
+
+static void
+feexec(struct CommandList **lp, volatile int wanttty, int do_glob)
+{
+    struct CommandList *ptr;
+    struct CommandList *end;
+    struct CommandList *top;
+
+    top = ptr = *lp;
+    end = top->enc;
+    ptr = top->next;
+    if (top->vec[1] == NULL) {
+	kret(lp);
+	return;
+    }
+    while (ptr != end) {
+	fnexec1(ptr);
+	ptr = ptr->next;
+    }
+    ptr = top->next;
+    setv(top->name, quote(Strsave(*top->vec)), VAR_READWRITE);
+    while (top->vec[1] != NULL) {
+	execute(ptr->t, wanttty, NULL, NULL, do_glob);
+	if (ptr == end) {
+	    ptr = top->next;
+	    setv(top->name, quote(Strsave(*++top->vec)), VAR_READWRITE);
+	    continue;
+	}
+	kret(&ptr);
+	if (ptr->enc != NULL)
+	    wlexec1(&ptr, wanttty, do_glob);
+	ptr = ptr->next;
     }
 }
 
@@ -1304,6 +1353,8 @@ search4(struct CommandList *lp, int level, Char *goal)
     switch (type = srchx(*lp->t->t_dcom)) {
     case TC_END:
 	lp->type = TC_END;
+	if (lp->enc != NULL && lp->enc->type == TC_FOREACH)
+	    break;
 	if (--level == 0)
 	    return lp;
 	break;
@@ -1326,6 +1377,8 @@ search5(struct CommandList *lp, int level, Char *goal)
     switch (type = srchx(*lp->t->t_dcom)) {
     case TC_END:
 	lp->type = TC_END;
+	if (lp->enc != NULL && lp->enc->type == TC_WHILE)
+	    break;
 	if (--level == 0)
 	    return lp;
 	break;
@@ -1368,19 +1421,18 @@ kret(struct CommandList **lp)
     ptr = *lp;
     switch (ptr->type) {
     case TC_IF:
-	if (!ptr->ret.status)
+	if (!ptr->ret)
 	    kret1(lp);
 	break;
     case TC_WHILE:
-	if (ptr->ret.status)
+	if (ptr->ret)
 	    kret2(lp);
 	break;
     case TC_FOREACH:
-	if (!ptr->ret.status)
-	    kret1(lp);
+	kret2(lp);
 	break;
     case TC_SWITCH:
-	if (!ptr->ret.status)
+	if (!ptr->ret)
 	    kret1(lp);
 	break;
     case TC_ELSE:
