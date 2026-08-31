@@ -1277,15 +1277,16 @@ struct Function { /* Structure for dofunction. */
 };
 
 struct CommandList {
-    union {
-	int status;
-	Char *label;
-    } ret;
     struct command *t;
     struct CommandList *next;
     struct CommandList *prev;
     struct CommandList *enc;
     int type;
+    int ret;
+    Char *label;
+    Char *name;
+    Char **vec0;
+    Char **vec;
 };
 
 extern struct Function fnsrc;
