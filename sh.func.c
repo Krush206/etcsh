@@ -369,7 +369,7 @@ doif(Char **v, struct command *kp)
 	    struct CommandList *ptr;
 
 	    ptr = rlist(kp);
-	    ptr->enc->ret.status = ptr->ret.status = i;
+	    ptr->enc->ret = ptr->ret = i;
 	    return;
 	}
 	/*
@@ -580,8 +580,14 @@ doforeach(Char **v, struct command *c)
 	v = saveblk(v);
 	trim(v);
     }
-    if (c->t_dflg & F_LINE)
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = rlist(c);
+	ptr->vec0 = ptr->vec = ptr->enc->vec0 = ptr->enc->vec = v;
+	ptr->name = ptr->enc->name = Strsave(cp);
 	return;
+    }
     nwp = xcalloc(1, sizeof *nwp);
     nwp->w_fe = nwp->w_fe0 = v;
     btell(&nwp->w_start);
@@ -625,7 +631,7 @@ dowhile(Char **v, struct command *c)
 	struct CommandList *ptr;
 
 	ptr = rlist(c);
-	ptr->enc->ret.status = ptr->ret.status = status;
+	ptr->enc->ret = ptr->ret = status;
 	return;
     }
     if (!again) {
