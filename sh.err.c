@@ -193,8 +193,7 @@ extern int enterhist;
 #define ERR_RECURSION	139
 #define ERR_RWANDRO	140
 #define ERR_READWRITE	141
-#define ERR_CTLPAR	142
-#define NO_ERRORS	143
+#define NO_ERRORS	142
 
 static const char *elst[NO_ERRORS] INIT_ZERO_STRUCT;
 
@@ -378,7 +377,6 @@ errinit(void)
     elst[ERR_RECURSION] = CSAVS(1, 142, "Too deep a recursion or nest");
     elst[ERR_RWANDRO] = CSAVS(1, 143, "Cannot apply both, read-only and read-write");
     elst[ERR_READWRITE] = CSAVS(1, 144, "$%S is read-write");
-    elst[ERR_CTLPAR] = CSAVS(1, 145, "Can't use subshell within control structure");
 }
 
 /* Cleanup data. */
