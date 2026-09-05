@@ -806,6 +806,8 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		return;
 	    }
 	}
+	if (doneinp)
+	    break;
 	if (t->t_dcdr) {
 	    t->t_dcdr->t_dflg |= t->t_dflg &
 		(F_NOFORK | F_NOINTERRUPT | F_BACKQ);
@@ -1127,6 +1129,8 @@ fnexec(struct CommandList **lp,
     for (ptr = *lp; ptr != hp; ptr = ptr->next) {
 	size_t omark;
 
+	if (doneinp)
+	    return;
 	if (ptr == &fntmp)
 	    pasterr(hp->enc);
 	dolptr = &doltmp;
@@ -1136,8 +1140,6 @@ fnexec(struct CommandList **lp,
 	execute(ptr->t, wanttty, NULL, NULL, do_glob);
 	cleanup_pop_mark(omark);
 	cleanup_until(&doltmp);
-	if (ptr->type == TC_EXIT)
-	    reset();
 	if (ptr->t->t_dtyp != NODE_COMMAND)
 	    continue;
 	switch (kwprop(ptr)) {
