@@ -80,7 +80,7 @@ const struct biltins bfunc[] = {
     { "fg",		dofg,		0,	INF	},
     { "filetest",	dofiletest,	2,	INF	},
     { "foreach",	doforeach,	3,	INF	},
-    { "function",	dofunction,	0,	INF	},
+    { "function",	dofunction,	0,	1	},
 #ifdef TCF
     { "getspath",	dogetspath,	0,	0	},
     { "getxvers",	dogetxvers,	0,	0	},

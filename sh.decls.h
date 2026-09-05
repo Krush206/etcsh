@@ -191,6 +191,7 @@ extern	void		  reexecute	(struct command *);
 extern  int		  getYN		(const char *);
 extern	void		  dotest	(Char **, struct command *);
 extern	struct CommandList *retlist	(struct command *);
+extern	void		  list_cleanup	(void *);
 
 /*
  * sh.glob.c
