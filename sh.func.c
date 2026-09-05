@@ -64,6 +64,7 @@ static	int	islocale_var	(Char *);
 static	void	wpfree		(struct whyle *);
 static	void	fn_save		(struct saved_state *, int[2], Char **, Char *);
 static	void	fn_restore	(void *);
+static	int	srchenc		(struct CommandList *);
 
 const struct biltins *
 isbfunc(struct command *t)
@@ -358,10 +359,24 @@ void
 doif(Char **v, struct command *kp)
 {
     int i;
+    Char **vv;
 
     v++;
-    i = noexec ? 1 : !!expr(&v);
-    if (*v == NULL) {
+    i = noexec ? 1 : expr(&v);
+    vv = v;
+    if (*vv == NULL)
+	stderror(ERR_NAME | ERR_EMPTYIF);
+    if (eq(*vv, STRthen)) {
+	if (*++vv)
+	    stderror(ERR_NAME | ERR_IMPRTHEN);
+	setname(short2str(STRthen));
+	if (kp->t_dflg & F_LINE) {
+	    struct CommandList *ptr;
+
+	    ptr = retlist(kp);
+	    ptr->enc->ret = ptr->ret = i;
+	    return;
+	}
 	/*
 	 * If expression was zero, then scan to else , otherwise just fall into
 	 * following code.
@@ -375,7 +390,7 @@ doif(Char **v, struct command *kp)
      * munging it so we can reexecute it.
      */
     if (i) {
-	lshift(kp->t_dcom, v - kp->t_dcom);
+	lshift(kp->t_dcom, vv - kp->t_dcom);
 	reexecute(kp);
 	donefds();
     }
@@ -427,8 +442,11 @@ doelse (Char **v, struct command *c)
 {
     USE(c);
     USE(v);
-    if (!noexec)
+    if (!noexec) {
+	if (c->t_dflg & F_LINE)
+	    return;
 	search(TC_ELSE, 0, NULL);
+    }
 }
 
 /*ARGSUSED*/
@@ -486,8 +504,17 @@ doswitch(Char **v, struct command *c)
 	stderror(ERR_SYNTAX);
     lp = globone(cp, G_ERROR);
     cleanup_push(lp, xfree);
-    if (!noexec)
-	search(TC_SWITCH, 0, lp);
+    if (!noexec) {
+	if (c->t_dflg & F_LINE) {
+	    struct CommandList *ptr;
+
+	    ptr = retlist(c);
+	    xfree(ptr->label);
+	    ptr->label = Strsave(lp);
+	}
+	else
+	    search(TC_SWITCH, 0, lp);
+    }
     cleanup_until(lp);
 }
 
@@ -497,6 +524,14 @@ dobreak(Char **v, struct command *c)
 {
     USE(v);
     USE(c);
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = retlist(c);
+	if (!srchenc(ptr))
+	    stderror(ERR_NAME | ERR_NOTWHILE);
+	return;
+    }
     if (whyles == NULL)
 	stderror(ERR_NAME | ERR_NOTWHILE);
     if (!noexec)
@@ -507,6 +542,8 @@ dobreak(Char **v, struct command *c)
 void
 doexit(Char **v, struct command *c)
 {
+    struct CommandList *ptr;
+
     USE(c);
 
     if (chkstop == 0 && (intty || intact) && evalvec == 0)
@@ -563,6 +600,14 @@ doforeach(Char **v, struct command *c)
 	v = saveblk(v);
 	trim(v);
     }
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = retlist(c);
+	ptr->vec = ptr->vec0 = ptr->enc->vec = ptr->enc->vec0 = v;
+	ptr->name = ptr->enc->name = Strsave(cp);
+	return;
+    }
     nwp = xcalloc(1, sizeof *nwp);
     nwp->w_fe = nwp->w_fe0 = v;
     btell(&nwp->w_start);
@@ -603,6 +648,13 @@ dowhile(Char **v, struct command *c)
 	status = !expr(&v);
     if (*v && !noexec)
 	stderror(ERR_NAME | ERR_EXPRESSION);
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = retlist(c);
+	ptr->enc->ret = ptr->ret = status;
+	return;
+    }
     if (!again) {
 	struct whyle *nwp = xcalloc(1, sizeof(*nwp));
 
@@ -647,6 +699,14 @@ doend(Char **v, struct command *c)
 {
     USE(v);
     USE(c);
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = retlist(c);
+	if (ptr->enc == NULL)
+	    stderror(ERR_NAME | ERR_NOTWHILE);
+	return;
+    }
     if (!whyles)
 	stderror(ERR_NAME | ERR_NOTWHILE);
     btell(&whyles->w_end);
@@ -660,6 +720,14 @@ docontin(Char **v, struct command *c)
 {
     USE(v);
     USE(c);
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = retlist(c);
+	if (!srchenc(ptr))
+	    stderror(ERR_NAME | ERR_NOTWHILE);
+	return;
+    }
     if (!whyles)
 	stderror(ERR_NAME | ERR_NOTWHILE);
     if (!noexec)
@@ -723,8 +791,11 @@ doswbrk(Char **v, struct command *c)
 {
     USE(v);
     USE(c);
-    if (!noexec)
+    if (!noexec) {
+	if (c->t_dflg & F_LINE)
+	    return;
 	search(TC_BRKSW, 0, NULL);
+    }
 }
 
 int
@@ -2760,6 +2831,32 @@ getYN(const char *prompt)
     while (c != '\n' && force_read(SHIN, &c, sizeof(c)) == sizeof(c))
 	continue;
     return doit;
+}
+
+struct CommandList *
+retlist(struct command *t)
+{
+    struct CommandList *ptr;
+
+    ptr = fnptr;
+    while (ptr->t != t)
+	ptr = ptr->next;
+    return ptr;
+}
+
+static int
+srchenc(struct CommandList *lp)
+{
+    struct CommandList *ptr;
+
+    for (ptr = lp; ptr != &fntmp; ptr = ptr->prev)
+	switch (ptr->type) {
+	case TC_WHILE:
+	    return 1;
+	case TC_FOREACH:
+	    return 2;
+	}
+    return 0;
 }
 
 struct Function fnsrc = { -1, 0, STRNULL };
