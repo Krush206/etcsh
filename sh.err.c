@@ -187,9 +187,9 @@ extern int enterhist;
 #define ERR_INVALID	133
 #define ERR_BADCOLORVAR	134
 #define ERR_EOF		135
-#define ERR_UNDFUNC	136
-#define ERR_FUNCBEGIN	137
-#define ERR_FUNCALNUM	138
+#define ERR_UNDFN	136
+#define ERR_FNBEGIN	137
+#define ERR_FNALNUM	138
 #define ERR_RECURSION	139
 #define ERR_RWANDRO	140
 #define ERR_READWRITE	141
@@ -371,9 +371,9 @@ errinit(void)
     elst[ERR_BADJOB] = CSAVS(1, 136, "No such job (badjob)");
     elst[ERR_BADCOLORVAR] = CSAVS(1, 137, "Unknown %s color variable '%c%c'");
     elst[ERR_EOF] = CSAVS(1, 138, "Unexpected end of file");
-    elst[ERR_UNDFUNC] = CSAVS(1, 139, "%S: Undeclared function");
-    elst[ERR_FUNCBEGIN] = CSAVS(1, 140, "Function name must begin with a letter");
-    elst[ERR_FUNCALNUM] = CSAVS(1, 141, "Function name must contain alphanumeric characters");
+    elst[ERR_UNDFN] = CSAVS(1, 139, "%S: Undeclared function");
+    elst[ERR_FNBEGIN] = CSAVS(1, 140, "Function name must begin with a letter");
+    elst[ERR_FNALNUM] = CSAVS(1, 141, "Function name must contain alphanumeric characters");
     elst[ERR_RECURSION] = CSAVS(1, 142, "Too deep a recursion or nest");
     elst[ERR_RWANDRO] = CSAVS(1, 143, "Cannot apply both, read-only and read-write");
     elst[ERR_READWRITE] = CSAVS(1, 144, "$%S is read-write");
