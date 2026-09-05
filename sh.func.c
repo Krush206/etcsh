@@ -65,8 +65,6 @@ static	void	wpfree		(struct whyle *);
 static	void	fn_save		(struct saved_state *, int[2], Char **, Char *);
 static	void	fn_restore	(void *);
 static	int	srchenc		(struct CommandList *);
-static	int	srchenc1	(struct CommandList *, struct CommandList *);
-static	int	srchenc2	(struct CommandList *, struct CommandList *);
 
 const struct biltins *
 isbfunc(struct command *t)
@@ -361,14 +359,21 @@ void
 doif(Char **v, struct command *kp)
 {
     int i;
+    Char **vv;
 
     v++;
-    i = noexec ? 1 : !!expr(&v);
-    if (*v == NULL) {
+    i = noexec ? 1 : expr(&v);
+    vv = v;
+    if (*vv == NULL)
+	stderror(ERR_NAME | ERR_EMPTYIF);
+    if (eq(*vv, STRthen)) {
+	if (*++vv)
+	    stderror(ERR_NAME | ERR_IMPRTHEN);
+	setname(short2str(STRthen));
 	if (kp->t_dflg & F_LINE) {
 	    struct CommandList *ptr;
 
-	    ptr = rlist(kp);
+	    ptr = retlist(kp);
 	    ptr->enc->ret = ptr->ret = i;
 	    return;
 	}
@@ -385,7 +390,7 @@ doif(Char **v, struct command *kp)
      * munging it so we can reexecute it.
      */
     if (i) {
-	lshift(kp->t_dcom, v - kp->t_dcom);
+	lshift(kp->t_dcom, vv - kp->t_dcom);
 	reexecute(kp);
 	donefds();
     }
@@ -435,6 +440,7 @@ reexecute(struct command *kp)
 void
 doelse (Char **v, struct command *c)
 {
+    USE(c);
     USE(v);
     if (!noexec) {
 	if (c->t_dflg & F_LINE)
@@ -487,6 +493,7 @@ doswitch(Char **v, struct command *c)
 {
     Char *cp, *lp;
 
+    USE(c);
     v++;
     if (!*v || *(*v++) != '(')
 	stderror(ERR_SYNTAX);
@@ -497,8 +504,17 @@ doswitch(Char **v, struct command *c)
 	stderror(ERR_SYNTAX);
     lp = globone(cp, G_ERROR);
     cleanup_push(lp, xfree);
-    if (!noexec && c->t_dflg ^ F_LINE)
-	search(TC_SWITCH, 0, lp);
+    if (!noexec) {
+	if (c->t_dflg & F_LINE) {
+	    struct CommandList *ptr;
+
+	    ptr = retlist(c);
+	    xfree(ptr->label);
+	    ptr->label = Strsave(lp);
+	}
+	else
+	    search(TC_SWITCH, 0, lp);
+    }
     cleanup_until(lp);
 }
 
@@ -507,11 +523,13 @@ void
 dobreak(Char **v, struct command *c)
 {
     USE(v);
+    USE(c);
     if (c->t_dflg & F_LINE) {
-	if (0)
+	struct CommandList *ptr;
+
+	ptr = retlist(c);
+	if (!srchenc(ptr))
 	    stderror(ERR_NAME | ERR_NOTWHILE);
-	if (!noexec)
-	    ;
 	return;
     }
     if (whyles == NULL)
@@ -524,6 +542,8 @@ dobreak(Char **v, struct command *c)
 void
 doexit(Char **v, struct command *c)
 {
+    struct CommandList *ptr;
+
     USE(c);
 
     if (chkstop == 0 && (intty || intact) && evalvec == 0)
@@ -583,8 +603,8 @@ doforeach(Char **v, struct command *c)
     if (c->t_dflg & F_LINE) {
 	struct CommandList *ptr;
 
-	ptr = rlist(c);
-	ptr->vec0 = ptr->vec = ptr->enc->vec0 = ptr->enc->vec = v;
+	ptr = retlist(c);
+	ptr->vec = ptr->vec0 = ptr->enc->vec = ptr->enc->vec0 = v;
 	ptr->name = ptr->enc->name = Strsave(cp);
 	return;
     }
@@ -614,6 +634,7 @@ dowhile(Char **v, struct command *c)
 			  SEEKEQ(&whyles->w_start, &lineloc) &&
 			  whyles->w_fename == 0;
 
+    USE(c);
     v++;
     /*
      * Implement prereading here also, taking care not to evaluate the
@@ -630,7 +651,7 @@ dowhile(Char **v, struct command *c)
     if (c->t_dflg & F_LINE) {
 	struct CommandList *ptr;
 
-	ptr = rlist(c);
+	ptr = retlist(c);
 	ptr->enc->ret = ptr->ret = status;
 	return;
     }
@@ -677,12 +698,11 @@ void
 doend(Char **v, struct command *c)
 {
     USE(v);
+    USE(c);
     if (c->t_dflg & F_LINE) {
 	struct CommandList *ptr;
 
-	ptr = fnptr;
-	while (ptr->t != c)
-	    ptr = ptr->next;
+	ptr = retlist(c);
 	if (ptr->enc == NULL)
 	    stderror(ERR_NAME | ERR_NOTWHILE);
 	return;
@@ -700,6 +720,14 @@ docontin(Char **v, struct command *c)
 {
     USE(v);
     USE(c);
+    if (c->t_dflg & F_LINE) {
+	struct CommandList *ptr;
+
+	ptr = retlist(c);
+	if (!srchenc(ptr))
+	    stderror(ERR_NAME | ERR_NOTWHILE);
+	return;
+    }
     if (!whyles)
 	stderror(ERR_NAME | ERR_NOTWHILE);
     if (!noexec)
@@ -763,8 +791,11 @@ doswbrk(Char **v, struct command *c)
 {
     USE(v);
     USE(c);
-    if (!noexec)
+    if (!noexec) {
+	if (c->t_dflg & F_LINE)
+	    return;
 	search(TC_BRKSW, 0, NULL);
+    }
 }
 
 int
@@ -2802,6 +2833,32 @@ getYN(const char *prompt)
     return doit;
 }
 
+struct CommandList *
+retlist(struct command *t)
+{
+    struct CommandList *ptr;
+
+    ptr = fnptr;
+    while (ptr->t != t)
+	ptr = ptr->next;
+    return ptr;
+}
+
+static int
+srchenc(struct CommandList *lp)
+{
+    struct CommandList *ptr;
+
+    for (ptr = lp; ptr != &fntmp; ptr = ptr->prev)
+	switch (ptr->type) {
+	case TC_WHILE:
+	    return 1;
+	case TC_FOREACH:
+	    return 2;
+	}
+    return 0;
+}
+
 struct Function fnsrc = { -1, 0, STRNULL };
 
 void
@@ -2870,7 +2927,7 @@ dofunction(Char **v, struct command *c)
 		if (srchx(aword.s) == TC_RETURN)
 		    break;
 		Strbuf_append(&func, aword.s);
-		Strbuf_append(&func, STRspace);
+		Strbuf_append1(&func, ' ');
 		while (getword(&aword)) {
 		    Strbuf_terminate(&aword);
 		    if (intty && Strlen(aword.s) > 0) {
@@ -2880,7 +2937,7 @@ dofunction(Char **v, struct command *c)
 			histent = histent->next;
 		    }
 		    Strbuf_append(&func, aword.s);
-		    Strbuf_append(&func, STRspace);
+		    Strbuf_append1(&func, ' ');
 		}
 		func.s[func.len - 1] = '\n';
 
@@ -2954,15 +3011,4 @@ dotest(Char **v, struct command *c)
     if (*v != NULL)
 	stderror(ERR_NAME | ERR_EXPRESSION);
     setstatus(i);
-}
-
-struct CommandList *
-rlist(struct command *t)
-{
-    struct CommandList *ptr;
-
-    ptr = fnptr;
-    while (ptr->t != t)
-	ptr = ptr->next;
-    return ptr;
 }
