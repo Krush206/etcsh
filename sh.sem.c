@@ -702,23 +702,18 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	    } else {
 		jmp_buf_t oldexit;
 		int ohaderr = haderr;
-		static void (*last)(Char **, struct command *);
 
-		last = bifunc->bfunct;
 		getexit(oldexit);
 		if (setexit() == 0)
 		    func(t, bifunc);
 		resexit(oldexit);
+		haderr = ohaderr;
 
 		if (adrof(STRprintexitvalue)) {
 		    int rv = getstatus();
 		    if (rv != 0)
 			xprintf(CGETS(17, 2, "Exit %d\n"), rv);
 		}
-		if (last == doexit && !haderr)
-		    reset();
-		last = NULL;
-		haderr = ohaderr;
 	    }
 	    break;
 	}
