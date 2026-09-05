@@ -44,9 +44,7 @@ static	struct command	*syn1a	 (const struct wordent *, const struct wordent *, i
 static	struct command	*syn1b	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn2	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn3	 (const struct wordent *, const struct wordent *, int);
-static	struct command	*list1	 (struct command *);
-static	struct command	*list2	 (struct command *);
-static	struct command	*list3	 (struct command *);
+static	void		 list1	 (struct command *);
 
 #define ALEFT	51		/* max of 50 alias expansions	 */
 #define HLEFT	11		/* max of 10 history expansions */
@@ -260,7 +258,8 @@ syn0(const struct wordent *p1, const struct wordent *p2, int flags)
 	    t1 = syn1(p1, p, flags);
 	    if (t1->t_dtyp == NODE_LIST ||
 		t1->t_dtyp == NODE_AND ||
-		t1->t_dtyp == NODE_OR) {
+		t1->t_dtyp == NODE_OR  ||
+		t1->t_dtyp == NODE_LINE) {
 		t = xcalloc(1, sizeof(*t));
 		t->t_dtyp = NODE_PAREN;
 		t->t_dflg = F_AMPERSAND | F_NOINTERRUPT;
@@ -299,7 +298,7 @@ out:
 /*
  * syn1
  *	syn1a
- *	syn1a ; syntax
+ *	syn1a ; syntax ;
  */
 static struct command *
 syn1(const struct wordent *p1, const struct wordent *p2, int flags)
@@ -326,15 +325,15 @@ syn1(const struct wordent *p1, const struct wordent *p2, int flags)
 		break;
 	    t = xcalloc(1, sizeof(*t));
 	    if (p->word[0] == ';')
-		t->t_dtyp = NODE_FUNC;
+		t->t_dtyp = NODE_LINE;
 	    else
 		t->t_dtyp = NODE_LIST;
 	    t->t_dcar = syn1a(p1, p, flags);
 	    t->t_dcdr = syntax(p->next, p2, flags);
 	    if (t->t_dcdr == 0)
 		t->t_dcdr = t->t_dcar, t->t_dcar = 0;
-	    else if (t->t_dcdr->t_dtyp != NODE_FUNC)
-		stderror(ERR_MISSING, ';');
+	    else if (t->t_dcdr->t_dtyp != NODE_LINE)
+		seterror(ERR_MISSING, ';');
 	    return (t);
 
 	default:
@@ -710,7 +709,7 @@ syntax_cleanup(void *xt)
     freesyn(t);
 }
 
-struct command *
+void
 list(struct command *t)
 {
     switch (t->t_dtyp) {
@@ -718,69 +717,28 @@ list(struct command *t)
     case NODE_OR:
     case NODE_PIPE:
     case NODE_LIST:
-	return list2(t);
+	if (t->t_dcar)
+	    list(t->t_dcar);
+	if (t->t_dcdr)
+	    list(t->t_dcdr);
+	break;
     case NODE_PAREN:
-	return list(t->t_dspr);
-    case NODE_FUNC:
-	return list3(list1(t));
+	list(t->t_dspr);
+	break;
+    case NODE_LINE:
+	if (t->t_dcar)
+	    list1(t->t_dcar);
+	if (t->t_dcdr)
+	    list1(t->t_dcdr);
     }
-    return t;
 }
 
-static struct command *
+static void
 list1(struct command *t)
 {
-    switch (t->t_dtyp) {
-    case NODE_AND:
-    case NODE_OR:
-    case NODE_PIPE:
-    case NODE_LIST:
-	if (t->t_dcar)
-	    (void) list(t->t_dcar);
-	if (t->t_dcdr)
-	    (void) list(t->t_dcdr);
-	return t;
-    case NODE_PAREN:
-	return list(t->t_dspr);
-    case NODE_FUNC:
-	if (t->t_dcar)
-	    (void) list1(t->t_dcar);
-	if (t->t_dcdr)
-	    (void) list1(t->t_dcdr);
-	return t;
+    if (t->t_dtyp == NODE_LINE) {
+	list(t);
+	return;
     }
-    return t;
-}
-
-static struct command *
-list2(struct command *t)
-{
-    switch (t->t_dtyp) {
-    case NODE_AND:
-    case NODE_OR:
-    case NODE_PIPE:
-    case NODE_LIST:
-	if (t->t_dcar)
-	    (void) list2(t->t_dcar);
-	if (t->t_dcdr)
-	    (void) list2(t->t_dcdr);
-	return t;
-    case NODE_PAREN:
-	return list(t->t_dspr);
-    case NODE_FUNC:
-	return list1(t);
-    }
-    return t;
-}
-
-static struct command *
-list3(struct command *t)
-{
-    if (t->t_dcar)
-	list3(t->t_dcar);
-    if (t->t_dcdr)
-	list3(t->t_dcdr);
-    if (t->t_dtyp == NODE_COMMAND)
-	t->t_dflg |= F_LINE;
-    return t;
+    t->t_dflg |= F_LINE;
 }
