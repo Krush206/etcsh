@@ -2944,6 +2944,7 @@ getwhole(struct Strbuf *line)
     }
     if (srchx(buf.s) == TC_RETURN) {
 	Strbuf_append(line, buf.s);
+	Strbuf_append(line, STRspace);
 	Strbuf_append(line, STRsemi);
 	Strbuf_terminate(line);
 	if (intty) {
