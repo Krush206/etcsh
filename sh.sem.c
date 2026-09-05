@@ -114,6 +114,7 @@ static	void		 Lfix		(struct command *);
 static	void		 Lfix1		(struct command *);
 static	void		 dolalloc	(struct command *);
 static	void		 pasterr	(struct CommandList *);
+static	int		 lfork		(struct command *t, volatile int);
 
 /*
  * C shell
@@ -768,13 +769,8 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	break;
 
     case NODE_LINE:
-	pid = pfork(t, -1);
-	if (pid != 0) {
-	    pwait();
+	if (lfork(t, wanttty))
 	    break;
-	}
-	xclose(SHIN);
-	SHIN = -1;
 	fnptr = &fntmp;
 	cleanup_push(&fntmp, fntmp_cleanup);
 	fnlist(t);
@@ -1601,4 +1597,21 @@ pasterr(struct CommandList *lp)
     case TC_SWITCH:
 	stderror(ERR_NAME | ERR_NOTFOUND, "endsw");
     }
+}
+
+static int
+lfork(struct command *t, volatile int wanttty)
+{
+    pid_t pid;
+
+    if (wanttty >= 0) {
+	pid = pfork(t, -1);
+	if (pid != 0) {
+	    pwait();
+	    return 1;
+	}
+	xclose(SHIN);
+	SHIN = -1;
+    }
+    return 0;
 }
