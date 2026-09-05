@@ -563,6 +563,7 @@ doexit(Char **v, struct command *c)
 	xclose(SHIN);
 	SHIN = -1;
     }
+    doneinp = 1;
 }
 
 /*ARGSUSED*/
