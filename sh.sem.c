@@ -55,13 +55,27 @@ struct CommandList fntmp = { NULL,
 			     &fntmp,
 			     &fntmp,
 			     NULL,
+			     -1,
 			     0,
-			     0,
+			     NULL,
 			     NULL,
 			     NULL,
 			     NULL,
 			     NULL };
 struct CommandList *fnptr = &fntmp;
+
+struct CommandList doltmp = { NULL,
+			      &doltmp,
+			      &doltmp,
+			      NULL,
+			      -1,
+			      0,
+			      NULL,
+			      NULL,
+			      NULL,
+			      NULL,
+			      NULL };
+struct CommandList *dolptr = &doltmp;
 
 #ifdef VFORK
 static	void		vffree		(int);
@@ -69,36 +83,37 @@ static	void		vffree		(int);
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
 static	void		 chkclob	(const char *);
-static	void		 fnlist		(struct command *, int, int);
-static	int		 ctlpar		(struct CommandList *);
-static	int		 ctlpar1	(struct CommandList *);
+static	void		 fnlist		(struct command *);
 static	void		 fnalloc	(struct command *);
-static	void		 fnexec		(struct CommandList *,
+static	void		 fnexec		(struct CommandList **,
+					 struct CommandList *,
 					 volatile int,
 					 int);
-static	void		 fnexec1	(struct CommandList *);
+static	void		 pline		(struct CommandList *);
 static	void		 wlexec		(struct CommandList **,
-					 volatile int,
-					 int);
-static	void		 wlexec1	(struct CommandList **,
 					 volatile int,
 					 int);
 static	void		 feexec		(struct CommandList **,
 					 volatile int,
 					 int);
 static	void		 search		(struct CommandList *);
-static	struct CommandList *search1	(struct CommandList *, int, Char *);
-static	struct CommandList *search2	(struct CommandList *, int, Char *);
-static	struct CommandList *search3	(struct CommandList *, int, Char *);
-static	struct CommandList *search4	(struct CommandList *, int, Char *);
-static	struct CommandList *search5	(struct CommandList *, int, Char *);
-static	struct CommandList *search6	(struct CommandList *, int, Char *);
-static	void		 kret		(struct CommandList **);
-static	void		 kret1		(struct CommandList **);
-static	void		 kret2		(struct CommandList **);
-static	void		 kret3		(struct CommandList **);
-static	void		 kret4		(struct CommandList **);
-static	void		 kret5		(struct CommandList **);
+static	struct CommandList *search1	(struct CommandList *, int);
+static	struct CommandList *search2	(struct CommandList *, int);
+static	struct CommandList *search3	(struct CommandList *, int);
+static	struct CommandList *search4	(struct CommandList *, int);
+static	struct CommandList *search5	(struct CommandList *, int);
+static	struct CommandList *search6	(struct CommandList *, int);
+static	void		 kwret		(struct CommandList **);
+static	void		 kwret1		(struct CommandList **);
+static	void		 kwret2		(struct CommandList **);
+static	void		 kwret3		(struct CommandList **);
+static	void		 kwret4		(struct CommandList **);
+static	void		 kwret5		(struct CommandList **);
+static	int		 kwprop		(struct CommandList *);
+static	void		 Lfix		(struct command *);
+static	void		 Lfix1		(struct command *);
+static	void		 dolalloc	(struct command *);
+static	void		 pasterr	(struct CommandList *);
 
 /*
  * C shell
@@ -142,7 +157,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 
     if (t == 0)
 	return;
-
+    list(t);
 #ifdef WINNT_NATIVE
     {
         if ((varval(STRNTslowexec) == STRNULL) &&
@@ -225,7 +240,8 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
     if (t->t_dflg & F_AMPERSAND)
 	wanttty = 0;
     switch (t->t_dtyp) {
-	size_t omark;
+	struct CommandList *ptr;
+
     case NODE_COMMAND:
 	if ((t->t_dcom[0][0] & (QUOTE | TRIM)) == QUOTE)
 	    memmove(t->t_dcom[0], t->t_dcom[0] + 1,
@@ -237,7 +253,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		       bifunc->bfunct == doif ||
 		       bifunc->bfunct == dowhile))))
 	    Dfix(t);		/* $ " ' \ */
-	if (t->t_dcom[0] == 0 || (t->t_dflg & F_SKIP)) {
+	if (t->t_dcom[0] == 0) {
 	    return;
 	}
 	/*FALLTHROUGH*/
@@ -755,6 +771,23 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	execute(t->t_dcdr, wanttty, pv, pipeout, do_glob);
 #endif /* BACKPIPE */
 	break;
+
+    case NODE_LINE:
+	pid = pfork(t, -1);
+	if (pid != 0) {
+	    pwait();
+	    break;
+	}
+	xclose(SHIN);
+	SHIN = -1;
+	fnptr = &fntmp;
+	cleanup_push(&fntmp, fntmp_cleanup);
+	fnlist(t);
+	pline(ptr = fntmp.next);
+	fnexec(&ptr, &fntmp, -1, do_glob);
+	cleanup_until(&fntmp);
+	break;
+
     case NODE_LIST:
 	if (t->t_dcar) {
 	    t->t_dcar->t_dflg |= t->t_dflg & (F_NOINTERRUPT | F_BACKQ);
@@ -772,17 +805,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 	    execute(t->t_dcdr, wanttty, NULL, NULL, do_glob);
 	}
 	break;
-    case NODE_FUNC:
-	cleanup_push(&fntmp, fntmp_cleanup);
-	omark = cleanup_push_mark();
-	fnptr = &fntmp;
-	fnlist(t, wanttty, do_glob);
-	if (ctlpar(fntmp.next))
-	    stderror(ERR_CTLPAR);
-	fnexec(fntmp.next, wanttty, do_glob);
-	cleanup_pop_mark(omark);
-	cleanup_until(&fntmp);
-	break;
+
     case NODE_OR:
     case NODE_AND:
 	if (t->t_dcar) {
@@ -1047,21 +1070,16 @@ chkclob(const char *cp)
 }
 
 static void
-fnlist(struct command *t, int wanttty, int do_glob)
+fnlist(struct command *t)
 {
-    if (t->t_dtyp == NODE_PAREN) {
-	fnalloc(t);
-	return;
-    }
-    if (t->t_dtyp != NODE_COMMAND) {
+    if (t->t_dtyp == NODE_LINE) {
 	if (t->t_dcar)
-	    fnlist(t->t_dcar, wanttty, do_glob);
+	    fnlist(t->t_dcar);
 	if (t->t_dcdr)
-	    fnlist(t->t_dcdr, wanttty, do_glob);
+	    fnlist(t->t_dcdr);
 	return;
     }
-    if (t->t_dflg & F_LINE)
-	fnalloc(t);
+    fnalloc(t);
 }
 
 static void
@@ -1075,7 +1093,7 @@ fnalloc(struct command *t)
     new->t = t;
     new->ret = 0;
     new->enc = NULL;
-    new->label = NULL;
+    new->label = Strsave(STRNULL);
     new->name = NULL;
     new->vec = NULL;
     new->vec0 = NULL;
@@ -1098,83 +1116,76 @@ fntmp_cleanup(void *xptr)
 	ptr->prev->next = ptr->next;
 	ptr->next->prev = ptr->prev;
 	ptr = ptr->next;
+	if (tmp->vec0 != NULL) {
+	    blkfree(tmp->vec0);
+	    tmp->enc->vec0 = NULL;
+	}
+	xfree(tmp->label);
 	xfree(tmp);
     }
 }
 
-static int
-ctlpar(struct CommandList *lp)
-{
-    struct CommandList *ptr;
-
-    ptr = lp;
-    if (ptr == &fntmp)
-	return 0;
-    if (ptr->t->t_dtyp == NODE_PAREN)
-	return ctlpar(ptr->next);
-    switch (srchx(*ptr->t->t_dcom)) {
-    case TC_IF:
-    case TC_ELSE:
-    case TC_SWITCH:
-    case TC_WHILE:
-    case TC_FOREACH:
-	return ctlpar1(ptr->next);
-    }
-    return ctlpar(ptr->next);
-}
-
-static int
-ctlpar1(struct CommandList *lp)
-{
-    struct CommandList *ptr;
-
-    ptr = lp;
-    if (ptr == &fntmp)
-	return 0;
-    if (ptr->t->t_dtyp == NODE_PAREN)
-	return 1;
-    switch (srchx(*ptr->t->t_dcom)) {
-    case TC_ENDIF:
-    case TC_ENDSW:
-    case TC_END:
-	return 0;
-    }
-    return ctlpar1(ptr->next);
-}
-
 static void
-fnexec(struct CommandList *lp, volatile int wanttty, int do_glob)
+fnexec(struct CommandList **lp,
+       struct CommandList *hp,
+       volatile int wanttty,
+       int do_glob)
 {
     struct CommandList *ptr;
 
-    for (ptr = lp; ptr != &fntmp; ptr = ptr->next) {
-	fnexec1(ptr);
+    for (ptr = *lp; ptr != hp; ptr = ptr->next) {
+	size_t omark;
+
+	if (ptr == &fntmp)
+	    pasterr(hp->enc);
+	dolptr = &doltmp;
+	cleanup_push(&doltmp, doltmp_cleanup);
+	omark = cleanup_push_mark();
+	Lfix(ptr->t);
 	execute(ptr->t, wanttty, NULL, NULL, do_glob);
+	cleanup_pop_mark(omark);
+	cleanup_until(&doltmp);
+	if (ptr->type == TC_EXIT)
+	    reset();
+	if (ptr->t->t_dtyp != NODE_COMMAND)
+	    continue;
+	switch (kwprop(ptr)) {
+	case 1:
+	    return;
+	case 2:
+	    hp->ret = hp->enc->ret = !hp->ret;
+	    return;
+	}
 	switch (ptr->type) {
 	case TC_FOREACH:
 	    feexec(&ptr, wanttty, do_glob);
 	    break;
 	case TC_WHILE:
 	    wlexec(&ptr, wanttty, do_glob);
-	    continue;
 	}
-	kret(&ptr);
+	kwret(&ptr);
     }
+    *lp = ptr;
 }
 
 static void
-fnexec1(struct CommandList *ptr)
+pline(struct CommandList *lp)
 {
+    struct CommandList *ptr;
     const struct biltins *volatile bp;
 
-    if ((bp = isbfunc(ptr->t)) &&
-	(bp->bfunct == doif ||
-	 bp->bfunct == doelse ||
-	 bp->bfunct == doswitch ||
-	 bp->bfunct == dowhile ||
-	 bp->bfunct == doforeach)) {
-	setname(bp->bname);
-	search(ptr);
+    for (ptr = lp; ptr != &fntmp; ptr = ptr->next) {
+	if (ptr->t->t_dtyp != NODE_COMMAND)
+	    continue;
+	if ((bp = isbfunc(ptr->t)) != NULL &&
+	    (bp->bfunct == doif ||
+	     bp->bfunct == doelse ||
+	     bp->bfunct == doswitch ||
+	     bp->bfunct == dowhile ||
+	     bp->bfunct == doforeach)) {
+	    setname(bp->bname);
+	    search(ptr);
+	}
     }
 }
 
@@ -1187,41 +1198,18 @@ wlexec(struct CommandList **lp, volatile int wanttty, int do_glob)
 
     top = ptr = *lp;
     end = top->enc;
-    ptr = ptr->next;
-    if (top->ret) {
-	kret(lp);
+    if (top->ret)
 	return;
-    }
-    while (ptr != end) {
-	fnexec1(ptr);
-	ptr = ptr->next;
-    }
     while (!top->ret) {
-	if (ptr == end)
-	    ptr = top;
-	execute(ptr->t, wanttty, NULL, NULL, do_glob);
-	if (ptr != top)
-	    kret(&ptr);
-	if (ptr->enc != NULL)
-	    wlexec1(&ptr, wanttty, do_glob);
-	ptr = ptr->next;
-    }
-}
-
-static void
-wlexec1(struct CommandList **lp, volatile int wanttty, int do_glob)
-{
-    struct CommandList *ptr;
-
-    ptr = (*lp)->enc;
-    switch (ptr->type) {
-    case TC_WHILE:
-	*lp = ptr;
-	wlexec(lp, wanttty, do_glob);
-	break;
-    case TC_FOREACH:
-	*lp = ptr;
-	feexec(lp, wanttty, do_glob);
+	ptr = top->next;
+	fnexec(&ptr, end, wanttty, do_glob);
+	if (top->ret)
+	    break;
+	dolptr = &doltmp;
+	cleanup_push(&doltmp, doltmp_cleanup);
+	Lfix(top->t);
+	execute(top->t, wanttty, NULL, NULL, do_glob);
+	cleanup_until(&doltmp);
     }
 }
 
@@ -1234,29 +1222,18 @@ feexec(struct CommandList **lp, volatile int wanttty, int do_glob)
 
     top = ptr = *lp;
     end = top->enc;
-    ptr = top->next;
-    if (top->vec[1] == NULL) {
-	kret(lp);
+    if (top->vec[1] == NULL)
 	return;
-    }
-    while (ptr != end) {
-	fnexec1(ptr);
-	ptr = ptr->next;
-    }
-    ptr = top->next;
-    setv(top->name, quote(Strsave(*top->vec)), VAR_READWRITE);
+    cleanup_push(top->name, xfree);
     while (top->vec[1] != NULL) {
-	execute(ptr->t, wanttty, NULL, NULL, do_glob);
-	if (ptr == end) {
-	    ptr = top->next;
-	    setv(top->name, quote(Strsave(*++top->vec)), VAR_READWRITE);
-	    continue;
-	}
-	kret(&ptr);
-	if (ptr->enc != NULL)
-	    wlexec1(&ptr, wanttty, do_glob);
-	ptr = ptr->next;
+	ptr = top->next;
+	setv(top->name, quote(Strsave(*top->vec++)), VAR_READWRITE);
+	fnexec(&ptr, end, wanttty, do_glob);
+	unsetv(top->name);
+	if (top->ret)
+	    break;
     }
+    cleanup_until(top->name);
 }
 
 static void
@@ -1265,47 +1242,51 @@ search(struct CommandList *lp)
     struct CommandList *ptr;
 
     ptr = lp;
-    ptr->enc = search1(ptr, 0, NULL);
+    ptr->enc = search1(ptr, 0);
     if (ptr->enc == &fntmp)
 	return;
     ptr->enc->enc = ptr;
 }
 
 static struct CommandList *
-search1(struct CommandList *lp, int level, Char *goal)
+search1(struct CommandList *lp, int level)
 {
     int type;
 
     if (lp == &fntmp)
 	return lp;
+    if (lp->t->t_dtyp != NODE_COMMAND)
+	return search1(lp->next, level);
     switch(type = srchx(*lp->t->t_dcom)) {
     case TC_IF:
 	lp->type = TC_IF;
-	return search2(lp->next, level + 1, goal);
+	return search2(lp->next, level + 1);
     case TC_SWITCH:
 	lp->type = TC_SWITCH;
-	return search3(lp->next, level + 1, goal);
+	return search3(lp->next, level + 1);
     case TC_WHILE:
 	lp->type = TC_WHILE;
-	return search4(lp->next, level + 1, goal);
+	return search4(lp->next, level + 1);
     case TC_FOREACH:
 	lp->type = TC_FOREACH;
-	return search5(lp->next, level + 1, goal);
+	return search5(lp->next, level + 1);
     case TC_ELSE:
 	lp->type = TC_ELSE;
-	return search6(lp->next, level + 1, goal);
+	return search6(lp->next, level + 1);
     }
     lp->type = type;
-    return search1(lp->next, level, goal);
+    return search1(lp->next, level);
 }
 
 static struct CommandList *
-search2(struct CommandList *lp, int level, Char *goal)
+search2(struct CommandList *lp, int level)
 {
     int type;
 
     if (lp == &fntmp)
-	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+	stderror(ERR_NAME | ERR_NOTFOUND, "then/endif");
+    if (lp->t->t_dtyp != NODE_COMMAND)
+	return search2(lp->next, level);
     switch (type = srchx(*lp->t->t_dcom)) {
     case TC_ENDIF:
 	lp->type = TC_ENDIF;
@@ -1314,20 +1295,22 @@ search2(struct CommandList *lp, int level, Char *goal)
 	break;
     case TC_IF:
 	lp->type = TC_IF;
-	return lp->enc = search2(lp->next, level + 1, goal);
+	return lp->enc = search2(lp->next, level + 1);
     default:
 	lp->type = type;
     }
-    return search2(lp->next, level, goal);
+    return search2(lp->next, level);
 }
 
 static struct CommandList *
-search3(struct CommandList *lp, int level, Char *goal)
+search3(struct CommandList *lp, int level)
 {
     int type;
 
     if (lp == &fntmp)
 	stderror(ERR_NAME | ERR_NOTFOUND, "endsw");
+    if (lp->t->t_dtyp != NODE_COMMAND)
+	return search3(lp->next, level);
     switch (type = srchx(*lp->t->t_dcom)) {
     case TC_ENDSW:
 	lp->type = TC_ENDSW;
@@ -1336,20 +1319,22 @@ search3(struct CommandList *lp, int level, Char *goal)
 	break;
     case TC_SWITCH:
 	lp->type = TC_SWITCH;
-	return lp->enc = search3(lp->next, level + 1, goal);
+	return lp->enc = search3(lp->next, level + 1);
     default:
 	lp->type = type;
     }
-    return search3(lp->next, level, goal);
+    return search3(lp->next, level);
 }
 
 static struct CommandList *
-search4(struct CommandList *lp, int level, Char *goal)
+search4(struct CommandList *lp, int level)
 {
     int type;
 
     if (lp == &fntmp)
 	stderror(ERR_NAME | ERR_NOTFOUND, "end");
+    if (lp->t->t_dtyp != NODE_COMMAND)
+	return search4(lp->next, level);
     switch (type = srchx(*lp->t->t_dcom)) {
     case TC_END:
 	lp->type = TC_END;
@@ -1358,22 +1343,27 @@ search4(struct CommandList *lp, int level, Char *goal)
 	if (--level == 0)
 	    return lp;
 	break;
+    case TC_FOREACH:
+	lp->type = TC_FOREACH;
+	return lp->enc = search5(lp->next, level + 1);
     case TC_WHILE:
 	lp->type = TC_WHILE;
-	return lp->enc = search4(lp->next, level + 1, goal);
+	return search4(lp->next, level + 1);
     default:
 	lp->type = type;
     }
-    return search4(lp->next, level, goal);
+    return search4(lp->next, level);
 }
 
 static struct CommandList *
-search5(struct CommandList *lp, int level, Char *goal)
+search5(struct CommandList *lp, int level)
 {
     int type;
 
     if (lp == &fntmp)
 	stderror(ERR_NAME | ERR_NOTFOUND, "end");
+    if (lp->t->t_dtyp != NODE_COMMAND)
+	return search5(lp->next, level);
     switch (type = srchx(*lp->t->t_dcom)) {
     case TC_END:
 	lp->type = TC_END;
@@ -1382,22 +1372,27 @@ search5(struct CommandList *lp, int level, Char *goal)
 	if (--level == 0)
 	    return lp;
 	break;
+    case TC_WHILE:
+	lp->type = TC_WHILE;
+	return search4(lp->next, level + 1);
     case TC_FOREACH:
 	lp->type = TC_FOREACH;
-	return lp->enc = search5(lp->next, level + 1, goal);
+	return lp->enc = search5(lp->next, level + 1);
     default:
 	lp->type = type;
     }
-    return search5(lp->next, level, goal);
+    return search5(lp->next, level);
 }
 
 static struct CommandList *
-search6(struct CommandList *lp, int level, Char *goal)
+search6(struct CommandList *lp, int level)
 {
     int type;
 
     if (lp == &fntmp)
 	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+    if (lp->t->t_dtyp != NODE_COMMAND)
+	return search6(lp->next, level);
     switch (type = srchx(*lp->t->t_dcom)) {
     case TC_ENDIF:
 	lp->type = TC_ENDIF;
@@ -1406,15 +1401,15 @@ search6(struct CommandList *lp, int level, Char *goal)
 	break;
     case TC_ELSE:
 	lp->type = TC_ELSE;
-	return lp->enc = search6(lp->next, level + 1, goal);
+	return lp->enc = search6(lp->next, level + 1);
     default:
 	lp->type = type;
     }
-    return search6(lp->next, level, goal);
+    return search6(lp->next, level);
 }
 
 static void
-kret(struct CommandList **lp)
+kwret(struct CommandList **lp)
 {
     struct CommandList *ptr;
 
@@ -1422,82 +1417,80 @@ kret(struct CommandList **lp)
     switch (ptr->type) {
     case TC_IF:
 	if (!ptr->ret)
-	    kret1(lp);
+	    kwret1(lp);
 	break;
     case TC_WHILE:
-	if (ptr->ret)
-	    kret2(lp);
-	break;
     case TC_FOREACH:
-	kret2(lp);
+	kwret2(lp);
 	break;
     case TC_SWITCH:
-	if (!ptr->ret)
-	    kret1(lp);
+	kwret3(lp);
 	break;
     case TC_ELSE:
-	kret5(lp);
-    }
-}
-
-static void
-kret1(struct CommandList **lp)
-{
-    struct CommandList *ptr;
-
-    for (ptr = *lp; ptr != &fntmp; ptr = ptr->next) {
-	switch (ptr->type) {
-	case TC_ENDIF:
-	case TC_ELSE:
-	    *lp = ptr;
-	    break;
-	default:
-	    continue;
-	}
+	kwret4(lp);
 	break;
+    case TC_BRKSW:
+	kwret5(lp);
     }
 }
 
 static void
-kret2(struct CommandList **lp)
+kwret1(struct CommandList **lp)
 {
     struct CommandList *ptr;
+    struct CommandList *end;
 
-    for (ptr = *lp; ptr != &fntmp; ptr = ptr->next)
-	if (ptr->type == TC_END) {
-	    *lp = ptr;
+    ptr = *lp;
+    end = ptr->enc;
+    while (ptr != end) {
+	if (ptr->type == TC_ELSE)
 	    break;
-	}
+	ptr = ptr->next;
+    }
+    *lp = ptr;
 }
 
 static void
-kret3(struct CommandList **lp)
+kwret2(struct CommandList **lp)
 {
     struct CommandList *ptr;
-    const struct biltins *volatile bp;
+    struct CommandList *end;
 
-    for (ptr = *lp; ptr != &fntmp; ptr = ptr->next)
-	if ((bp = isbfunc(ptr->t)) && bp->bfunct == doelse) {
-	    *lp = ptr;
-	    break;
-	}
+    ptr = *lp;
+    end = ptr->enc;
+    while (ptr != end)
+	ptr = ptr->next;
+    *lp = ptr;
 }
 
 static void
-kret4(struct CommandList **lp)
+kwret3(struct CommandList **lp)
 {
     struct CommandList *ptr;
-    const struct biltins *volatile bp;
+    struct CommandList *end;
+    struct CommandList *top;
 
-    for (ptr = *lp; ptr != &fntmp; ptr = ptr->next)
-	if ((bp = isbfunc(ptr->t)) && bp->bfunct == doelse) {
+    top = *lp;
+    end = top->enc;
+    for (ptr = *lp; ptr != end; ptr = ptr->next) {
+	if (ptr->type == TC_CASE && lastchr(ptr->t->t_dcom[1]) == ':')
+	    ptr->t->t_dcom[1][Strlen(ptr->t->t_dcom[1]) - 1] = '\0';
+	if (ptr->t->t_dcom[1] != NULL && eq(ptr->t->t_dcom[1], top->label)) {
 	    *lp = ptr;
-	    break;
+	    return;
 	}
+    }
+    for (ptr = *lp; ptr != end; ptr = ptr->next) {
+	if (ptr->t->t_dcom[0][0] != ':' && lastchr(ptr->t->t_dcom[0]) == ':')
+	    ptr->t->t_dcom[0][Strlen(ptr->t->t_dcom[0]) - 1] = '\0';
+	if (eq(ptr->t->t_dcom[0], STRdefault))
+	    break;
+    }
+    *lp = ptr;
 }
 
 static void
-kret5(struct CommandList **lp)
+kwret4(struct CommandList **lp)
 {
     struct CommandList *ptr;
 
@@ -1505,4 +1498,112 @@ kret5(struct CommandList **lp)
     while (ptr->type != TC_ENDIF)
 	ptr = ptr->next;
     *lp = ptr;
+}
+
+static void
+kwret5(struct CommandList **lp)
+{
+    struct CommandList *ptr;
+
+    ptr = *lp;
+    while (ptr->type != TC_ENDSW)
+	ptr = ptr->next;
+    *lp = ptr;
+}
+
+static int
+kwprop(struct CommandList *lp)
+{
+    struct CommandList *ptr;
+    const struct biltins *volatile bp;
+
+    ptr = lp;
+    if ((bp = isbfunc(ptr->t)) == NULL)
+	return 0;
+    if (bp->bfunct == docontin)
+	return 1;
+    if (bp->bfunct == dobreak)
+	return 2;
+    return 0;
+}
+
+static void
+Lfix(struct command *t)
+{
+    switch (t->t_dtyp) {
+    case NODE_COMMAND:
+	dolalloc(t);
+	break;
+    case NODE_AND:
+    case NODE_OR:
+    case NODE_LIST:
+    case NODE_PIPE:
+	if (t->t_dcar)
+	    Lfix1(t->t_dcar);
+	if (t->t_dcdr)
+	    Lfix1(t->t_dcdr);
+    }
+}
+
+static void
+Lfix1(struct command *t)
+{
+    if (t->t_dtyp != NODE_COMMAND) {
+	Lfix(t);
+	return;
+    }
+    dolalloc(t);
+}
+
+static void
+dolalloc(struct command *t)
+{
+    struct CommandList *new;
+
+    new = xmalloc(sizeof *new);
+    new->next = &doltmp;
+    new->prev = dolptr;
+    new->t = t;
+    new->sav = t->t_dcom;
+    t->t_dcom = saveblk(t->t_dcom);
+    doltmp.prev = dolptr = dolptr->next = new;
+}
+
+void
+doltmp_cleanup(void *xptr)
+{
+    struct CommandList *ptr;
+    struct CommandList *hp;
+
+    hp = ptr = xptr;
+    ptr = ptr->next;
+    while (ptr != hp) {
+	struct CommandList *tmp;
+
+	tmp = ptr;
+	ptr->prev->next = ptr->next;
+	ptr->next->prev = ptr->prev;
+	ptr = ptr->next;
+	blkfree(tmp->t->t_dcom);
+	tmp->t->t_dcom = tmp->sav;
+	xfree(tmp);
+    }
+}
+
+static void
+pasterr(struct CommandList *lp)
+{
+    const struct biltins *volatile bp;
+
+    bp = isbfunc(lp->t);
+    setname(bp->bname);
+    switch (lp->type) {
+    case TC_WHILE:
+    case TC_FOREACH:
+	stderror(ERR_NAME | ERR_NOTFOUND, "end");
+    case TC_IF:
+	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
+    case TC_SWITCH:
+	stderror(ERR_NAME | ERR_NOTFOUND, "endsw");
+    }
 }
