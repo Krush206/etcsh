@@ -20,6 +20,8 @@ Notable features over the original tcsh are
 
 • read-write variable flag;
 
-• `exit` shall cancel lists.
+• `exit` shall cancel lists;
+
+• one-line control structure parsing.
 
 More is to come. Feedbacks and contributions are much appreciated.
