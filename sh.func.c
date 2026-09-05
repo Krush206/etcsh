@@ -639,7 +639,7 @@ dowhile(Char **v, struct command *c)
      */
     if (noexec)
 	status = 0;
-    else if (intty && !again)
+    else if (intty && !again && (c->t_dflg & F_LINE) == 0)
 	status = !exp0(&v, TEXP_IGNORE);
     else
 	status = !expr(&v);
@@ -2868,7 +2868,7 @@ dofunction(Char **v, struct command *c)
     int i;
 
     if (*++v == NULL) {
-	plist(&aliases, VAR_READWRITE);
+	plist(&aliases, VAR_ALL);
 	return;
     }
     Sgoal = *v;
@@ -2897,9 +2897,10 @@ dofunction(Char **v, struct command *c)
 	blk[i++] = Strsave(new->buf.s);
     blk[i] = Strsave(STRRparen);
     blk[0] = Strsave(STRLparen);
-    setq(Sgoal, saveblk(blk), &aliases, VAR_READWRITE);
+    set1(strip(Sgoal), saveblk(blk), &aliases, VAR_READWRITE);
     cleanup_until(blk);
     cleanup_until(&strtmp);
+    tw_cmd_free();
 }
 
 void
