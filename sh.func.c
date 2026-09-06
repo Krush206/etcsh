@@ -1124,6 +1124,8 @@ getword(struct Strbuf *wp)
 	first = 1;
 	do {
 	    c = readc(1);
+	    if (d && c == '\\')
+		unreadc(c);
 	    if (c == '\\' && (c = readc(1)) == '\n')
 		c = ' ';
 	    if (c == '\'' || c == '"') {
