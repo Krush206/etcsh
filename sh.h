@@ -1270,13 +1270,6 @@ EXTERN nl_catd catd;
 extern int    filec;
 #endif /* FILEC */
 
-struct Function { /* Structure for dofunction. */
-    int pipe, lvl;
-    Char *decl;
-};
-
-extern struct Function fnsrc;
-
 /*
  * This preserves the input state of the shell. It is used by
  * st_save and st_restore to manupulate shell state.
@@ -1303,7 +1296,6 @@ struct saved_state {
     int	  cantell;
     struct Bin	  B;
     int		  justpr;
-    struct Function fn;
 };
 
 #include "sh.decls.h"
@@ -1362,6 +1354,12 @@ struct CommandList {
     Char **vec0;
     Char **vec;
     Char **sav;
+};
+
+struct StrbufList {
+    struct Strbuf buf;
+    struct StrbufList *next;
+    struct StrbufList *prev;
 };
 
 extern struct CommandList fntmp;

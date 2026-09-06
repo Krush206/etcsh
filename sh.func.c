@@ -62,9 +62,8 @@ static	void	toend		(void);
 static	void	xecho		(int, Char **);
 static	int	islocale_var	(Char *);
 static	void	wpfree		(struct whyle *);
-static	void	fn_save		(struct saved_state *, int[2], Char **, Char *);
-static	void	fn_restore	(void *);
 static	int	srchenc		(struct CommandList *);
+static	int	getwhole	(struct Strbuf *);
 
 const struct biltins *
 isbfunc(struct command *t)
@@ -523,8 +522,7 @@ void
 dobreak(Char **v, struct command *c)
 {
     USE(v);
-    USE(c);
-    if (c->t_dflg & F_LINE) {
+    if(c != NULL && c->t_dflg & F_LINE) {
 	struct CommandList *ptr;
 
 	ptr = retlist(c);
@@ -558,8 +556,7 @@ doexit(Char **v, struct command *c)
 	    stderror(ERR_NAME | ERR_EXPRESSION);
     }
     btoeof();
-    /* Always close, except in the context of
-     * dosource or dofunction.
+    /* Always close, except in the context of dosource.
      * st_restore will handle. */
     if (!insource) {
 	xclose(SHIN);
@@ -642,7 +639,7 @@ dowhile(Char **v, struct command *c)
      */
     if (noexec)
 	status = 0;
-    else if (intty && !again)
+    else if (intty && !again && (c->t_dflg & F_LINE) == 0)
 	status = !exp0(&v, TEXP_IGNORE);
     else
 	status = !expr(&v);
@@ -1127,6 +1124,8 @@ getword(struct Strbuf *wp)
 	first = 1;
 	do {
 	    c = readc(1);
+	    if (d && c == '\\')
+		unreadc(c);
 	    if (c == '\\' && (c = readc(1)) == '\n')
 		c = ' ';
 	    if (c == '\'' || c == '"') {
@@ -2859,145 +2858,51 @@ srchenc(struct CommandList *lp)
     return 0;
 }
 
-struct Function fnsrc = { -1, 0, STRNULL };
+static struct StrbufList strtmp = { { NULL, 0, 0 }, &strtmp, &strtmp };
+static struct StrbufList *strptr = &strtmp;
 
 void
 dofunction(Char **v, struct command *c)
 {
-    if (*++v == NULL) {
-	plist(&functions, VAR_READONLY);
+    struct StrbufList *new;
+    Char *p;
+    Char **blk;
+    int i;
 
+    if (*++v == NULL) {
+	plist(&aliases, VAR_ALL);
 	return;
     }
-    Sgoal = *v++;
+    Sgoal = *v;
     Stype = TC_RETURN;
-    {
-	int pv[2];
-	struct saved_state st;
-	struct varent *varp;
-	Char *p;
-
-	if (!letter(*(p = Sgoal)))
-	    stderror(ERR_NAME | ERR_FUNCBEGIN);
-	while (*++p)
-	    if (!alnum(*p))
-		stderror(ERR_NAME | ERR_FUNCALNUM);
-	if ((varp = adrof1(Sgoal, &functions))) {
-	    if (fnsrc.lvl == 100)
-		stderror(ERR_RECURSION);
-	    mypipe(pv);
-	    cleanup_push(&st, fn_restore);
-	    fn_save(&st, pv, v, *varp->vec);
-	    process(0);
-	    cleanup_until(&st);
-
-	    return;
-	}
-	if (*v || c->t_dlef || c->t_drit ||
-	    c->t_dflg & (F_PIPEIN | F_PIPEOUT))
-	    stderror(ERR_UNDFUNC, Sgoal);
-	{
-	    Char alarg[] = { '!', '*', '\0' },
-		 *(*varvec)[4];
-	    struct Strbuf aword = Strbuf_INIT,
-			  func = Strbuf_INIT;
-	    struct wordent *histent = NULL,
-			   *ohistent = NULL;
-
-	    cleanup_push(&aword, Strbuf_cleanup);
-	    while (1) {
-		if (intty) {
-		    histent = xmalloc(sizeof(*histent));
-		    ohistent = xmalloc(sizeof(*histent));
-		    ohistent->word = STRNULL;
-		    ohistent->next = histent;
-		    histent->prev = ohistent;
-		}
-		if (intty && fseekp == feobp && aret == TCSH_F_SEEK)
-		    printprompt(1, bname);
-		(void) getword(&aword);
-		Strbuf_terminate(&aword);
-		if (intty && Strlen(aword.s) > 0) {
-		    histent->word = Strsave(aword.s);
-		    histent->next = xmalloc(sizeof(*histent));
-		    histent->next->prev = histent;
-		    histent = histent->next;
-		}
-
-		if (srchx(aword.s) == TC_RETURN)
-		    break;
-		Strbuf_append(&func, aword.s);
-		Strbuf_append1(&func, ' ');
-		while (getword(&aword)) {
-		    Strbuf_terminate(&aword);
-		    if (intty && Strlen(aword.s) > 0) {
-			histent->word = Strsave(aword.s);
-			histent->next = xmalloc(sizeof(*histent));
-			histent->next->prev = histent;
-			histent = histent->next;
-		    }
-		    Strbuf_append(&func, aword.s);
-		    Strbuf_append1(&func, ' ');
-		}
-		func.s[func.len - 1] = '\n';
-
-		if (intty) {
-		    ohistent->prev = histgetword(histent);
-		    ohistent->prev->next = ohistent;
-		    savehist(ohistent, 0);
-		    freelex(ohistent);
-		    xfree(ohistent);
-		} else
-		    (void) getword(NULL);
-	    }
-
-	    if (intty) {
-		ohistent->prev = histgetword(histent);
-		ohistent->prev->next = ohistent;
-		savehist(ohistent, 0);
-		freelex(ohistent);
-		xfree(ohistent);
-	    }
-	    cleanup_until(&aword);
-	    if (!func.len)
-		return;
-	    Strbuf_terminate(&func);
-	    varvec = xcalloc(1, sizeof *varvec - (sizeof **varvec * 2));
-	    **varvec = func.s;
-	    setq(Sgoal, *varvec, &functions, VAR_READONLY);
-	    varvec = xcalloc(1, sizeof *varvec);
-	    **varvec = Strsave(str2short(bname));
-	    (*varvec)[1] = Strsave(Sgoal);
-	    (*varvec)[2] = Strsave(alarg);
-	    setq(Sgoal, *varvec, &aliases, VAR_READWRITE);
-
-	    tw_cmd_free();
-	}
-    }
-}
-
-static void
-fn_save(struct saved_state *st, int pv[2], Char **av, Char *decl)
-{
-    st_save(st, pv[0], 0, NULL, av);
-    st->fn.pipe = fnsrc.pipe;
-    st->fn.decl = fnsrc.decl;
-    fnsrc.pipe = pv[1];
-    fnsrc.decl = decl;
-    fnsrc.lvl++;
-    insource = 2;
-}
-
-static void
-fn_restore(void *xst)
-{
-    struct saved_state *st;
-
-    st_restore(xst);
-    xclose(fnsrc.pipe);
-    fnsrc.pipe = (st = xst)->fn.pipe;
-    fnsrc.decl = st->fn.decl;
-    fnsrc.lvl--;
+    if (!letter(*Sgoal))
+	stderror(ERR_NAME | ERR_FNBEGIN);
+    p = Sgoal;
+    while (*++p)
+	if (!alnum(*p))
+	    stderror(ERR_NAME | ERR_FNALNUM);
+    strptr = &strtmp;
+    cleanup_push(&strtmp, list_cleanup);
+    do {
+	new = xmalloc(sizeof *new);
+	(void) memset(&new->buf, 0, sizeof new->buf);
+	new->next = &strtmp;
+	new->prev = strptr;
+	strtmp.prev = strptr = strptr->next = new;
+    } while (!getwhole(&new->buf));
+    i = 0;
+    for (new = strtmp.next; new != &strtmp; new = new->next)
+	i++;
+    cleanup_push(blk = xcalloc(1, (i + 3) * sizeof *blk), blk_cleanup);
+    i = 1;
+    for (new = strtmp.next; new != &strtmp; new = new->next)
+	blk[i++] = quote(Strsave(new->buf.s));
+    blk[i] = Strsave(STRRparen);
+    blk[0] = Strsave(STRLparen);
+    set1(strip(Sgoal), saveblk(blk), &aliases, VAR_READWRITE);
+    cleanup_until(blk);
+    cleanup_until(&strtmp);
+    tw_cmd_free();
 }
 
 void
@@ -3011,4 +2916,92 @@ dotest(Char **v, struct command *c)
     if (*v != NULL)
 	stderror(ERR_NAME | ERR_EXPRESSION);
     setstatus(i);
+}
+
+static int
+getwhole(struct Strbuf *line)
+{
+    struct wordent *histent;
+    struct wordent *ohistent;
+    struct Strbuf buf;
+
+    (void) memset(&buf, 0, sizeof buf);
+    cleanup_push(&buf, Strbuf_cleanup);
+    if (intty) {
+	histent = xmalloc(sizeof *histent);
+	ohistent = xmalloc(sizeof *histent);
+	ohistent->word = STRNULL;
+	ohistent->next = histent;
+	histent->prev = ohistent;
+    }
+    if (intty && fseekp == feobp && aret == TCSH_F_SEEK)
+	printprompt(1, bname);
+    (void) getword(&buf);
+    Strbuf_terminate(&buf);
+    if (intty && buf.len > 0) {
+	histent->word = Strsave(buf.s);
+	histent->next = xmalloc(sizeof *histent);
+	histent->next->prev = histent;
+	histent = histent->next;
+    }
+    if (srchx(buf.s) == TC_RETURN) {
+	Strbuf_append(line, buf.s);
+	Strbuf_append(line, STRspace);
+	Strbuf_append(line, STRsemi);
+	Strbuf_terminate(line);
+	if (intty) {
+	    ohistent->prev = histgetword(histent);
+	    ohistent->prev->next = ohistent;
+	    savehist(ohistent, 0);
+	    freelex(ohistent);
+	    xfree(ohistent);
+	}
+	cleanup_until(&buf);
+	return 1;
+    }
+    Strbuf_append(line, buf.s);
+    Strbuf_append(line, STRspace);
+    while (getword(&buf)) {
+	Strbuf_terminate(&buf);
+	if (intty && buf.len > 0) {
+	    histent->word = Strsave(buf.s);
+	    histent->next = xmalloc(sizeof *histent);
+	    histent->next->prev = histent;
+	    histent = histent->next;
+	}
+	Strbuf_append(line, buf.s);
+	Strbuf_append(line, STRspace);
+    }
+    Strbuf_append(line, STRsemi);
+    Strbuf_terminate(line);
+    if (intty) {
+	ohistent->prev = histgetword(histent);
+	ohistent->prev->next = ohistent;
+	savehist(ohistent, 0);
+	freelex(ohistent);
+	xfree(ohistent);
+    } else
+	(void) getword(NULL);
+    cleanup_until(&buf);
+    return 0;
+}
+
+void
+list_cleanup(void *xstr)
+{
+    struct StrbufList *str;
+    struct StrbufList *hp;
+
+    hp = str = xstr;
+    str = str->next;
+    while (str != hp) {
+	struct StrbufList *tmp;
+
+	tmp = str;
+	Strbuf_cleanup(&str->buf);
+	str->next->prev = str->prev;
+	str->prev->next = str->next;
+	str = str->next;
+	xfree(tmp);
+    }
 }
