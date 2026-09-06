@@ -522,8 +522,7 @@ void
 dobreak(Char **v, struct command *c)
 {
     USE(v);
-    USE(c);
-    if (c->t_dflg & F_LINE) {
+    if(c != NULL && c->t_dflg & F_LINE) {
 	struct CommandList *ptr;
 
 	ptr = retlist(c);
@@ -2895,7 +2894,7 @@ dofunction(Char **v, struct command *c)
     cleanup_push(blk = xcalloc(1, (i + 3) * sizeof *blk), blk_cleanup);
     i = 1;
     for (new = strtmp.next; new != &strtmp; new = new->next)
-	blk[i++] = Strsave(new->buf.s);
+	blk[i++] = quote(Strsave(new->buf.s));
     blk[i] = Strsave(STRRparen);
     blk[0] = Strsave(STRLparen);
     set1(strip(Sgoal), saveblk(blk), &aliases, VAR_READWRITE);
