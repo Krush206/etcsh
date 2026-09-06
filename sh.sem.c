@@ -1196,7 +1196,7 @@ wlexec(struct CommandList **lp, volatile int wanttty, int do_glob)
     while (!top->ret) {
 	ptr = top->next;
 	fnexec(&ptr, end, wanttty, do_glob);
-	if (top->ret)
+	if (top->ret || doneinp)
 	    break;
 	dolptr = &doltmp;
 	cleanup_push(&doltmp, doltmp_cleanup);
@@ -1223,7 +1223,7 @@ feexec(struct CommandList **lp, volatile int wanttty, int do_glob)
 	setv(top->name, quote(Strsave(*top->vec++)), VAR_READWRITE);
 	fnexec(&ptr, end, wanttty, do_glob);
 	unsetv(top->name);
-	if (top->ret)
+	if (top->ret || doneinp)
 	    break;
     }
     cleanup_until(top->name);
