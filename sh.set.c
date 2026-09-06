@@ -288,11 +288,11 @@ doset(Char **v, struct command *c)
 	return;
     }
     pipe = 0;
-    if (c->t_dlef || !isatty(OLDSTD))
+    if (c->t_dlef || !isatty(0))
 	pipe = 1;
     do {
 	Char c;
-	struct Strbuf s;
+	struct Strbuf buf;
 
 	hadsub = 0;
 	vp = p;
@@ -345,11 +345,13 @@ doset(Char **v, struct command *c)
 	    Char *copy;
 
 	    if (pipe) {
-		memset(&s, 0, sizeof s);
-		while (wide_read(OLDSTD, &c, (size_t) 1, 0) > 0)
-		    Strbuf_append1(&s, c | QUOTE);
-		Strbuf_terminate(&s);
-		copy = s.s;
+		(void) memset(&buf, 0, sizeof buf);
+		cleanup_push(&buf, Strbuf_cleanup);
+		while (wide_read(0, &c, (size_t) 1, 0) > 0)
+		    Strbuf_append1(&buf, c);
+		Strbuf_terminate(&buf);
+		copy = Strsave(buf.s);
+		cleanup_until(&buf);
 	    } else
 		copy = Strsave(p);
 	    cleanup_push(copy, xfree);
@@ -359,27 +361,29 @@ doset(Char **v, struct command *c)
 	}
 	else {
 	    if (pipe) {
-		int empty = 1;
+		int empty;
 
-		memset(&s, 0, sizeof s);
-		while (wide_read(OLDSTD, &c, (size_t) 1, 0) > 0) {
+		(void) memset(&buf, 0, sizeof buf);
+		cleanup_push(&buf, Strbuf_cleanup);
+		empty = 1;
+		while (wide_read(0, &c, (size_t) 1, 0) > 0) {
 		    if (c == '\n') {
 			empty = 0;
-
 			break;
 		    }
-		    Strbuf_append1(&s, c | QUOTE);
+		    Strbuf_append1(&buf, c);
 		}
-		if (empty && s.s == NULL) {
+		if (empty && buf.s == NULL) {
 		    Char **empty;
 
-		    empty = xcalloc(1, sizeof *empty);
+		    *(empty = xmalloc(sizeof *empty)) = NULL;
 		    set1(vp, empty, &shvhed, flags);
 		}
 		else {
-		    Strbuf_terminate(&s);
-		    setv(vp, s.s, flags);
+		    Strbuf_terminate(&buf);
+		    setv(vp, Strsave(buf.s), flags);
 		}
+		cleanup_until(&buf);
 	    } else
 		setv(vp, Strsave(p), flags);
 	}
