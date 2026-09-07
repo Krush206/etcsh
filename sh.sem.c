@@ -107,8 +107,7 @@ static	void		 kwret1		(struct CommandList **);
 static	void		 kwret2		(struct CommandList **);
 static	void		 kwret3		(struct CommandList **);
 static	void		 kwret4		(struct CommandList **);
-static	void		 kwret5		(struct CommandList **,
-					 struct CommandList *);
+static	void		 kwret5		(struct CommandList **);
 static	int		 kwprop		(struct CommandList *);
 static	void		 Lfix		(struct command *);
 static	void		 Lfix1		(struct command *);
@@ -1316,6 +1315,9 @@ search3(struct CommandList *lp, int level)
 	if (--level == 0)
 	    return lp;
 	break;
+    case TC_BRKSW:
+	lp->type = TC_BRKSW;
+	return lp->enc = search3(lp->next, level);
     case TC_SWITCH:
 	lp->type = TC_SWITCH;
 	return lp->enc = search3(lp->next, level + 1);
@@ -1401,10 +1403,10 @@ kwret(struct CommandList **lp)
     case TC_WHILE:
     case TC_FOREACH:
     case TC_ELSE:
-    case TC_SWITCH:
+    case TC_BRKSW:
 	kwret2(lp);
 	break;
-    case TC_BRKSW:
+    case TC_SWITCH:
 	kwret3(lp);
     }
 }
@@ -1483,18 +1485,19 @@ kwret4(struct CommandList **lp)
     setname(bp->bname);
     doif(&ptr->t->t_dcom[1], ptr->t);
     if (!ptr->ret)
-	kwret5(&ptr, ptr->enc);
+	kwret5(&ptr);
     *lp = ptr;
 }
 
 static void
-kwret5(struct CommandList **lp, struct CommandList *hp)
+kwret5(struct CommandList **lp)
 {
     struct CommandList *ptr;
     struct CommandList *end;
 
     ptr = *lp;
-    for (ptr = ptr->next; ptr != hp; ptr = ptr->next) {
+    end = ptr->enc;
+    for (ptr = ptr->next; ptr != end; ptr = ptr->next) {
 	switch (elif(ptr)) {
 	case 1:
 	    kwret4(&ptr);
