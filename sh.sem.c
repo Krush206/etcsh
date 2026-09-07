@@ -108,13 +108,15 @@ static	void		 kwret1		(struct CommandList **);
 static	void		 kwret2		(struct CommandList **);
 static	void		 kwret3		(struct CommandList **);
 static	void		 kwret4		(struct CommandList **);
-static	void		 kwret5		(struct CommandList **);
+static	void		 kwret5		(struct CommandList **,
+					 struct CommandList *);
 static	int		 kwprop		(struct CommandList *);
 static	void		 Lfix		(struct command *);
 static	void		 Lfix1		(struct command *);
 static	void		 dolalloc	(struct command *);
 static	void		 pasterr	(struct CommandList *);
-static	int		 lfork		(struct command *t, volatile int);
+static	int		 lfork		(struct command *, volatile int);
+static	int		 elif		(struct CommandList *);
 
 /*
  * C shell
@@ -1250,7 +1252,7 @@ search1(struct CommandList *lp, int level)
 	return lp;
     if (lp->t->t_dtyp != NODE_COMMAND)
 	return search1(lp->next, level);
-    switch(type = srchx(*lp->t->t_dcom)) {
+    switch(type = srchx(lp->t->t_dcom[0])) {
     case TC_IF:
 	lp->type = TC_IF;
 	return search2(lp->next, level + 1);
@@ -1265,7 +1267,9 @@ search1(struct CommandList *lp, int level)
 	return search5(lp->next, level + 1);
     case TC_ELSE:
 	lp->type = TC_ELSE;
-	return search6(lp->next, level + 1);
+	if (lp->t->t_dcom[1] != NULL && srchx(lp->t->t_dcom[1]) == TC_IF)
+	    lp->type = TC_IF;
+	return search2(lp->next, level + 1);
     }
     lp->type = type;
     return search1(lp->next, level);
@@ -1280,7 +1284,7 @@ search2(struct CommandList *lp, int level)
 	stderror(ERR_NAME | ERR_NOTFOUND, "then/endif");
     if (lp->t->t_dtyp != NODE_COMMAND)
 	return search2(lp->next, level);
-    switch (type = srchx(*lp->t->t_dcom)) {
+    switch (type = srchx(lp->t->t_dcom[0])) {
     case TC_ENDIF:
 	lp->type = TC_ENDIF;
 	if (--level == 0)
@@ -1289,6 +1293,9 @@ search2(struct CommandList *lp, int level)
     case TC_IF:
 	lp->type = TC_IF;
 	return lp->enc = search2(lp->next, level + 1);
+    case TC_ELSE:
+	lp->type = TC_ELSE;
+	return lp->enc = search2(lp->next, level);
     default:
 	lp->type = type;
     }
@@ -1304,7 +1311,7 @@ search3(struct CommandList *lp, int level)
 	stderror(ERR_NAME | ERR_NOTFOUND, "endsw");
     if (lp->t->t_dtyp != NODE_COMMAND)
 	return search3(lp->next, level);
-    switch (type = srchx(*lp->t->t_dcom)) {
+    switch (type = srchx(lp->t->t_dcom[0])) {
     case TC_ENDSW:
 	lp->type = TC_ENDSW;
 	if (--level == 0)
@@ -1328,7 +1335,7 @@ search4(struct CommandList *lp, int level)
 	stderror(ERR_NAME | ERR_NOTFOUND, "end");
     if (lp->t->t_dtyp != NODE_COMMAND)
 	return search4(lp->next, level);
-    switch (type = srchx(*lp->t->t_dcom)) {
+    switch (type = srchx(lp->t->t_dcom[0])) {
     case TC_END:
 	lp->type = TC_END;
 	if (lp->enc != NULL && lp->enc->type == TC_FOREACH)
@@ -1357,7 +1364,7 @@ search5(struct CommandList *lp, int level)
 	stderror(ERR_NAME | ERR_NOTFOUND, "end");
     if (lp->t->t_dtyp != NODE_COMMAND)
 	return search5(lp->next, level);
-    switch (type = srchx(*lp->t->t_dcom)) {
+    switch (type = srchx(lp->t->t_dcom[0])) {
     case TC_END:
 	lp->type = TC_END;
 	if (lp->enc != NULL && lp->enc->type == TC_WHILE)
@@ -1386,7 +1393,7 @@ search6(struct CommandList *lp, int level)
 	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
     if (lp->t->t_dtyp != NODE_COMMAND)
 	return search6(lp->next, level);
-    switch (type = srchx(*lp->t->t_dcom)) {
+    switch (type = srchx(lp->t->t_dcom[0])) {
     case TC_ENDIF:
 	lp->type = TC_ENDIF;
 	if (--level == 0)
@@ -1409,21 +1416,21 @@ kwret(struct CommandList **lp)
     ptr = *lp;
     switch (ptr->type) {
     case TC_IF:
+	if (srchx(ptr->t->t_dcom[0]) == TC_ELSE) {
+	    kwret2(lp);
+	    break;
+	}
 	if (!ptr->ret)
 	    kwret1(lp);
 	break;
     case TC_WHILE:
     case TC_FOREACH:
+    case TC_ELSE:
+    case TC_SWITCH:
 	kwret2(lp);
 	break;
-    case TC_SWITCH:
-	kwret3(lp);
-	break;
-    case TC_ELSE:
-	kwret4(lp);
-	break;
     case TC_BRKSW:
-	kwret5(lp);
+	kwret3(lp);
     }
 }
 
@@ -1436,9 +1443,17 @@ kwret1(struct CommandList **lp)
     ptr = *lp;
     end = ptr->enc;
     while (ptr != end) {
-	if (ptr->type == TC_ELSE)
+	switch (elif(ptr)) {
+	case 1:
+	    kwret4(&ptr);
 	    break;
-	ptr = ptr->next;
+	case 3:
+	    break;
+	default:
+	    ptr = ptr->next;
+	    continue;
+	}
+	break;
     }
     *lp = ptr;
 }
@@ -1488,19 +1503,31 @@ kwret4(struct CommandList **lp)
     struct CommandList *ptr;
 
     ptr = *lp;
-    while (ptr->type != TC_ENDIF)
-	ptr = ptr->next;
+    doif(&ptr->t->t_dcom[1], ptr->t);
+    if (!ptr->ret)
+	kwret5(&ptr, ptr->enc);
     *lp = ptr;
 }
 
 static void
-kwret5(struct CommandList **lp)
+kwret5(struct CommandList **lp, struct CommandList *hp)
 {
     struct CommandList *ptr;
+    struct CommandList *end;
 
     ptr = *lp;
-    while (ptr->type != TC_ENDSW)
-	ptr = ptr->next;
+    for (ptr = ptr->next; ptr != hp; ptr = ptr->next) {
+	switch (elif(ptr)) {
+	case 1:
+	    kwret4(&ptr);
+	    break;
+	case 3:
+	    break;
+	default:
+	    continue;
+	}
+	break;
+    }
     *lp = ptr;
 }
 
@@ -1615,5 +1642,17 @@ lfork(struct command *t, volatile int wanttty)
 	xclose(SHIN);
 	SHIN = -1;
     }
+    return 0;
+}
+
+static int
+elif(struct CommandList *lp)
+{
+    if (lp->type == TC_IF && srchx(lp->t->t_dcom[0]) == TC_ELSE)
+	return 1;
+    if (lp->type == TC_IF)
+	return 2;
+    if (lp->type == TC_ELSE)
+	return 3;
     return 0;
 }
