@@ -102,7 +102,6 @@ static	struct CommandList *search2	(struct CommandList *, int);
 static	struct CommandList *search3	(struct CommandList *, int);
 static	struct CommandList *search4	(struct CommandList *, int);
 static	struct CommandList *search5	(struct CommandList *, int);
-static	struct CommandList *search6	(struct CommandList *, int);
 static	void		 kwret		(struct CommandList **);
 static	void		 kwret1		(struct CommandList **);
 static	void		 kwret2		(struct CommandList **);
@@ -1382,30 +1381,6 @@ search5(struct CommandList *lp, int level)
 	lp->type = type;
     }
     return search5(lp->next, level);
-}
-
-static struct CommandList *
-search6(struct CommandList *lp, int level)
-{
-    int type;
-
-    if (lp == &fntmp)
-	stderror(ERR_NAME | ERR_NOTFOUND, "endif");
-    if (lp->t->t_dtyp != NODE_COMMAND)
-	return search6(lp->next, level);
-    switch (type = srchx(lp->t->t_dcom[0])) {
-    case TC_ENDIF:
-	lp->type = TC_ENDIF;
-	if (--level == 0)
-	    return lp;
-	break;
-    case TC_ELSE:
-	lp->type = TC_ELSE;
-	return lp->enc = search6(lp->next, level + 1);
-    default:
-	lp->type = type;
-    }
-    return search6(lp->next, level);
 }
 
 static void
