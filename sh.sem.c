@@ -1476,8 +1476,11 @@ static void
 kwret4(struct CommandList **lp)
 {
     struct CommandList *ptr;
+    const struct biltins *volatile bp;
 
     ptr = *lp;
+    bp = isbfunc(ptr->t);
+    setname(bp->bname);
     doif(&ptr->t->t_dcom[1], ptr->t);
     if (!ptr->ret)
 	kwret5(&ptr, ptr->enc);
