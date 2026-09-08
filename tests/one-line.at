@@ -1,0 +1,101 @@
+AT_BANNER([One-line control structures])
+
+AT_SETUP([one-line foreach])
+AT_DATA([foreach.csh], [[
+foreach n (one two three) ; echo $n ; end ;
+]])
+AT_CHECK([tcsh -f foreach.csh], [0],
+[one
+two
+three
+])
+AT_CLEANUP
+
+
+AT_SETUP([one-line if])
+AT_DATA([if.csh], [[
+if ( 1 ) then ; echo yes ; endif ;
+]])
+AT_CHECK([tcsh -f if.csh], [0],
+[yes
+])
+AT_CLEANUP
+
+
+AT_SETUP([one-line if/else])
+AT_DATA([ifelse.csh], [[
+if ( 0 ) then ; echo yes ; else if ( 0 ) then ; echo elif ; else ; echo no ; endif ;
+]])
+AT_CHECK([tcsh -f ifelse.csh], [0],
+[no
+])
+AT_CLEANUP
+
+
+AT_SETUP([one-line while])
+AT_DATA([while.csh], [[
+@ n = 1
+while ( $n <= 3 ) ; echo $n ; @ n++ ; end ;
+]])
+AT_CHECK([tcsh -f while.csh], [0],
+[1
+2
+3
+])
+AT_CLEANUP
+
+
+AT_SETUP([one-line foreach with glob])
+AT_DATA([foreach-glob.csh], [[
+mkdir tmp
+cd tmp
+touch one two three
+foreach n ( * ) ; echo $n ; end ;
+]])
+AT_CHECK([tcsh -f foreach-glob.csh], [0],
+[one
+three
+two
+])
+AT_CLEANUP
+
+
+AT_SETUP([one-line switch])
+AT_DATA([switch.csh], [[
+switch ( 5 ) ; case 5: ; echo 5 ; breaksw ; default: ; echo default ; endsw ;
+]])
+AT_CHECK([tcsh -f switch.csh], [0],
+[5
+])
+AT_CLEANUP
+
+
+AT_SETUP([one-line control structure requires terminating semicolon])
+AT_DATA([missing-semicolon.csh], [[
+if ( 1 ) then ; echo yes ; endif
+]])
+AT_CHECK([tcsh -f missing-semicolon.csh], [1], [],
+[Missing ';'.
+])
+AT_CLEANUP
+
+
+AT_SETUP([ordinary commands require terminating semicolon])
+AT_DATA([ordinary.csh], [[
+echo hello ; echo world
+]])
+AT_CHECK([tcsh -f ordinary.csh], [1], [],
+[Missing ';'.
+])
+AT_CLEANUP
+
+
+AT_SETUP([nested one-line control structures])
+AT_DATA([nested.csh], [[
+foreach n ( one two ) ; if ( $n == one ) then ; echo first ; else ; echo second ; endif ; end ;
+]])
+AT_CHECK([tcsh -f nested.csh], [0],
+[first
+second
+])
+AT_CLEANUP
