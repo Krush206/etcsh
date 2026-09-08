@@ -1,0 +1,58 @@
+AT_BANNER([Function declarations])
+
+AT_SETUP([function name must begin with a letter])
+AT_DATA([function-letter.csh], [[
+function @myfunc
+]])
+AT_CHECK([tcsh -f function-letter.csh], [1], [],
+[function: Function name must begin with a letter.
+])
+AT_CLEANUP
+
+AT_SETUP([function name must contain alphanumeric characters])
+AT_DATA([function-alpha.csh], [[
+function myfunc@
+]])
+AT_CHECK([tcsh -f function-alpha.csh], [1], [],
+[function: Function name must contain alphanumeric characters.
+])
+AT_CLEANUP
+
+AT_SETUP([simple function])
+AT_DATA([function-simple.csh], [[
+function myfunc
+echo myfunc
+if ( 1 ) then
+echo OK
+else
+echo NOT OK
+endif
+return
+myfunc
+]])
+AT_CHECK([tcsh -f function-simple.csh], [0],
+[myfunc
+OK
+])
+AT_CLEANUP
+
+AT_SETUP([complex function])
+AT_DATA([function-complex.csh], [[
+function myfunc
+set myvar = ()
+foreach word ( a b c )
+set myvar = ( $myvar $word )
+( while $#myvar ; echo $myvar[1] ; shift myvar ; end ; )
+end
+return
+myfunc
+]])
+AT_CHECK([tcsh -f function-complex.csh], [0],
+[a
+a
+b
+a
+b
+c
+])
+AT_CLEANUP
