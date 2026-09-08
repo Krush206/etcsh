@@ -57,6 +57,7 @@ m4_include([subst.at])
 m4_include([syntax.at])
 m4_include([variables.at])
 m4_include([one-line.at])
+m4_include([functions.at])
 
 m4_errprintn()
 m4_errprintn([Expect ]m4_set_size(TCSH_set_untested)[ skipped tests (of untested features) in a full make check])
