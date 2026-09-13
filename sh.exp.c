@@ -64,6 +64,7 @@ static	Char 	  *exp6		(Char ***, int);
 static	void	   evalav	(Char **);
 static	int	   isa		(Char *, int);
 static	tcsh_number_t  egetn	(const Char *);
+static	Char	  *Tfix		(Char *, Char ***, int);
 
 #ifdef EDEBUG
 static	void	   etracc	(const char *, const Char *, Char ***);
@@ -600,18 +601,8 @@ exp6(Char ***vp, int ignore)
 	return putn(getstatus() == 0);
     }
     for (cp = **vp; *cp; cp++)
-	if (cmap(*cp, _DOL | QUOTES)) {
-	    Char *buf;
-
-	    if (ignore & TEXP_IGNORE) {
-		(*vp)++;
-		return Strsave(STRNULL);
-	    }
-	    cleanup_push(cp = Dfix1(**vp), xfree);
-	    *(*vp)++ = Strsave(buf = globone(cp, G_ERROR));
-	    cleanup_until(cp);
-	    return buf;
-	}
+	if (cmap(*cp, _DOL | QUOTES))
+	    return Tfix(cp, vp, ignore);
     if (isa(**vp, ANYOP))
 	return (Strsave(STRNULL));
     cp = *(*vp)++;
@@ -627,6 +618,20 @@ exp6(Char ***vp, int ignore)
     return (ignore & TEXP_NOGLOB ? Strsave(cp) : globone(cp, G_APPEND));
 }
 
+static Char *
+Tfix(Char *cp, Char ***vp, int ignore)
+{
+    Char *buf;
+
+    if (ignore & TEXP_IGNORE) {
+	(*vp)++;
+	return Strsave(STRNULL);
+    }
+    cleanup_push(cp = Dfix1(**vp), xfree);
+    *(*vp)++ = Strsave(buf = globone(cp, G_ERROR));
+    cleanup_until(cp);
+    return buf;
+}
 
 /*
  * Extended file tests
@@ -657,8 +662,16 @@ filetest(Char *cp, Char ***vp, int ignore)
     tcsh_number_t i = 0;
     unsigned pmask = 0xffff;
     int altout = 0;
-    Char *ft = cp, *dp, *ep, *strdev, *strino, *strF, *str, valtest = '\0',
-    *errval = STR0;
+    Char *ft = cp,
+	 *dp,
+	 *ep,
+	 *strdev,
+	 *strino,
+	 *strF,
+	 *str,
+	 valtest = '\0',
+	 *errval = STR0,
+	 *blk[2];
     char *string, string0[22 + MB_LEN_MAX + 1];	/* space for 64 bit octal */
     time_t footime;
     struct passwd *pw;
@@ -708,11 +721,18 @@ filetest(Char *cp, Char ***vp, int ignore)
     if (ignore & TEXP_IGNORE)
 	return (Strsave(STRNULL));
     if ((ignore & TEXP_NOGLOB) == 0) {
+	cleanup_push(dp = Dfix1(dp), xfree);
 	ep = globone(dp, G_APPEND);
+	cleanup_until(dp);
     } else {
+	cleanup_push(dp = Dfix1(dp), xfree);
 	ep = Strsave(dp);
+	cleanup_until(dp);
     }
     cleanup_push(ep, xfree);
+    blk[1] = NULL;
+    blk[0] = ep;
+    xechoit(blk);
     ft = &cp[1];
     do
 	switch (*ft) {
