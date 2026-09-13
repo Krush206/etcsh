@@ -181,37 +181,33 @@ sh_access(const Char *fname, int mode)
 tcsh_number_t
 expr(Char ***vp)
 {
-    Char **vpi, **vpc, *nblk[2], **blks[2];
+    Char **vpi, **vpc, *nblk[2], **blks[2], **nvp;
     tcsh_number_t i;
     int len;
 
-    *blks = blks[1] = NULL;
+    blks[0] = blks[1] = NULL;
     cleanup_push(blks, blkcmp_cleanup);
     len = blklen(*vp) + 1;
     vpi = *vp;
-    vpc = *blks = xmalloc(sizeof **blks * len);
+    vpc = blks[0] = xmalloc(len * sizeof **blks);
     nblk[1] = NULL;
     while (*vpi) {
-	*nblk = Strsave(*vpi++);
+	nblk[0] = Strsave(*vpi++);
 	(void) blkcpy(vpc++, nblk);
     }
-    blks[1] = blkcpy(xmalloc(sizeof *blks[1] * len), vpc = *blks);
+    blks[1] = blkcpy(xmalloc(len * sizeof **blks), vpc = blks[0]);
     i = exp0(&vpc, 0);
     *vp += --len - blklen(vpc);
-    {
-	Char **nvp;
-
-	len -= blklen(vpc);
-	vpi = *blks;
-	cleanup_push(nvp = xmalloc(sizeof *nvp * (len + 1)), xfree);
-	while (vpi != vpc) {
-	    *nblk = *vpi++;
-	    (void) blkcpy(nvp++, nblk);
-	}
-	nvp -= len;
-	xechoit(nvp);
-	cleanup_until(nvp);
+    len -= blklen(vpc);
+    vpi = blks[0];
+    cleanup_push(nvp = xmalloc((len + 1) * sizeof *nvp), xfree);
+    while (vpi != vpc) {
+	nblk[0] = *vpi++;
+	(void) blkcpy(nvp++, nblk);
     }
+    nvp -= len;
+    xechoit(nvp);
+    cleanup_until(nvp);
     cleanup_until(blks);
 
     return i;
