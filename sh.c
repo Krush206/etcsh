@@ -78,7 +78,7 @@ extern int NLSMapsAreInited;
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
 
-static const char tcshstr[] = "tcsh";
+static const char tcshstr[] = "etcsh";
 
 struct sigaction parintr;	/* Parents interrupt catch */
 struct sigaction parterm;	/* Parents terminate catch */
