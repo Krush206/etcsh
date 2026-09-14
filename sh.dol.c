@@ -519,7 +519,7 @@ Dgetdol(void)
 	}
 
 	fixDolMod();
-	if (peekc) {
+	if (peekc && peekc != ('\n' | QUOTE)) {
 	    Char (*peekla)[2];
 
 	    peekla = xmalloc(sizeof *peekla);
