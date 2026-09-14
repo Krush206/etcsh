@@ -350,7 +350,7 @@ doset(Char **v, struct command *c)
 		while (wide_read(0, &c, (size_t) 1, 0) > 0)
 		    Strbuf_append1(&buf, c);
 		Strbuf_terminate(&buf);
-		copy = Strsave(buf.s);
+		copy = quote(Strsave(buf.s));
 		cleanup_until(&buf);
 	    } else
 		copy = Strsave(p);
@@ -381,7 +381,7 @@ doset(Char **v, struct command *c)
 		}
 		else {
 		    Strbuf_terminate(&buf);
-		    setv(vp, Strsave(buf.s), flags);
+		    setv(vp, quote(Strsave(buf.s)), flags);
 		}
 		cleanup_until(&buf);
 	    } else
