@@ -978,7 +978,6 @@ search(int type, int level, Char *goal)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
-	    freelex(ohistent);
 	    xfree(ohistent);
 	} else
 	    (void) getword(NULL);
@@ -2960,7 +2959,6 @@ getwhole(struct Strbuf *line)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
-	    freelex(ohistent);
 	    xfree(ohistent);
 	}
 	cleanup_until(&buf);
@@ -2985,7 +2983,6 @@ getwhole(struct Strbuf *line)
 	ohistent->prev = histgetword(histent);
 	ohistent->prev->next = ohistent;
 	savehist(ohistent, 0);
-	freelex(ohistent);
 	xfree(ohistent);
     } else
 	(void) getword(NULL);
