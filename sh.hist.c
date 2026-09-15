@@ -1040,7 +1040,6 @@ hfree(struct Hist *hp)
     assert(hp != histMerg);
     if (hp->Hhash)
         removeHistHashTable(hp);
-    freelex(&hp->Hlex);
     if (hp->histline)
         xfree(hp->histline);
     xfree(hp);
