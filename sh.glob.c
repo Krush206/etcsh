@@ -790,7 +790,6 @@ backeval(struct blk_buf *bb, struct Strbuf *word, Char *cp, int literal)
 		seterr = NULL;
 	    }
 
-	    freelex(&paraml1);
 	    (void) lex(&paraml1);
 	    cleanup_push(&paraml1, lex_cleanup);
 	    if (seterr)
