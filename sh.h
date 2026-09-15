@@ -1298,6 +1298,59 @@ struct saved_state {
     int		  justpr;
 };
 
+/*
+ * One-line command parsing structure.
+ */
+struct CommandList {
+    struct command *t;
+    struct CommandList *next;
+    struct CommandList *prev;
+    struct CommandList *enc;
+    int type;
+    int ret;
+    Char *label;
+    Char *name;
+    Char **vec0;
+    Char **vec;
+    Char **sav;
+};
+
+struct StrbufList {
+    struct Strbuf buf;
+    struct StrbufList *next;
+    struct StrbufList *prev;
+};
+
+extern struct CommandList fntmp;
+extern struct CommandList *fnptr;
+
+extern struct CommandList doltmp;
+extern struct CommandList *dolptr;
+
+/*
+ * Static buffer allocation structure.
+ */
+struct Memory {
+    union {
+	struct command tree;
+	struct wordent ent;
+    } mem;
+    struct Memory *next;
+    struct Memory *prev;
+};
+
+extern struct Memory (*lexmem)[];
+extern struct Memory *lexptr;
+
+extern struct Memory (*treemem)[];
+extern struct Memory *treeptr;
+
+#define ALLOC_LEX 1
+#define ALLOC_TREE 2
+
+#define MEM_LEX 128
+#define MEM_TREE 128
+
 #include "sh.decls.h"
 /*
  * Since on some machines characters are unsigned, and the signed
@@ -1338,34 +1391,5 @@ struct saved_state {
 
 #define TEXP_IGNORE 1	/* in ignore, it means to ignore value, just parse */
 #define TEXP_NOGLOB 2	/* in ignore, it means not to globone */
-
-/*
- * One-line command parsing structure.
- */
-struct CommandList {
-    struct command *t;
-    struct CommandList *next;
-    struct CommandList *prev;
-    struct CommandList *enc;
-    int type;
-    int ret;
-    Char *label;
-    Char *name;
-    Char **vec0;
-    Char **vec;
-    Char **sav;
-};
-
-struct StrbufList {
-    struct Strbuf buf;
-    struct StrbufList *next;
-    struct StrbufList *prev;
-};
-
-extern struct CommandList fntmp;
-extern struct CommandList *fnptr;
-
-extern struct CommandList doltmp;
-extern struct CommandList *dolptr;
 
 #endif /* _h_sh */
