@@ -75,6 +75,12 @@ extern int NLSMapsAreInited;
  * ported to Apple Unix (TM) (OREO)  26 -- 29 Jun 1987
  */
 
+struct Memory (*lexmem)[MEM_LEX];
+struct Memory *lexptr;
+
+struct Memory (*treemem)[MEM_TREE];
+struct Memory *treeptr;
+
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
 
@@ -112,6 +118,7 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
+static	void		  xballoc	(void);
 static	int		  srccat	(Char *, Char *);
 #ifndef WINNT_NATIVE
 static	int		  srcfile	(const char *, int, int, Char **);
@@ -222,6 +229,7 @@ main(int argc, char **argv)
     nt_init();
 #endif /* WINNT_NATIVE */
 
+    xballoc();
     (void)memset(&reslab, 0, sizeof(reslab));
 #if defined(NLS_CATALOGS) && defined(LC_MESSAGES)
     (void) setlocale(LC_MESSAGES, "");
@@ -241,7 +249,7 @@ main(int argc, char **argv)
 #endif
 
     nlsinit();
-    initlex(&paraml);
+    initlex(&(*lexmem)->mem.ent);
 
 #ifdef MALLOC_TRACE
     mal_setstatsfile(fdopen(dmove(xopen("/tmp/tcsh.trace",
@@ -2037,11 +2045,11 @@ process(int catch)
 	 */
 	if (setintr)
 	    pintr_push_enable(&old_pintr_disabled);
-	freelex(&paraml);
-	hadhist = lex(&paraml);
+	freelex(&lexptr);
+	hadhist = lex(&(*lexmem)->mem.ent);
 	if (setintr)
 	    cleanup_until(&old_pintr_disabled);
-	cleanup_push(&paraml, lex_cleanup);
+	cleanup_push(&lexptr, lex_cleanup);
 
 	/*
 	 * Echo not only on VERBOSE, but also with history expansion. If there
@@ -2054,7 +2062,7 @@ process(int catch)
 	    int odidfds = didfds;
 	    haderr = 1;
 	    didfds = 0;
-	    prlex(&paraml);
+	    prlex(&(*lexmem)->mem.ent);
 	    flush();
 	    haderr = 0;
 	    didfds = odidfds;
@@ -2070,7 +2078,7 @@ process(int catch)
 	 * elsewhere...
 	 */
 	if (enterhist || (catch && intty && !whyles && !tellwhat && !arun))
-	    savehist(&paraml, enterhist > 1);
+	    savehist(&(*lexmem)->mem.ent, enterhist > 1);
 
 	if (Expand && seterr)
 	    Expand = 0;
@@ -2092,35 +2100,35 @@ process(int catch)
 	 * If had a tellwhat from twenex() then do
 	 */
 	if (tellwhat) {
-	    (void) tellmewhat(&paraml, NULL);
+	    (void) tellmewhat(&(*lexmem)->mem.ent, NULL);
 	    goto cmd_done;
 	}
 
-	alias(&paraml);
+	alias(&(*lexmem)->mem.ent);
 
 #ifdef BSDJOBS
 	/*
 	 * If we are interactive, try to continue jobs that we have stopped
 	 */
 	if (prompt)
-	    continue_jobs(&paraml);
+	    continue_jobs(&(*lexmem)->mem.ent);
 #endif				/* BSDJOBS */
 
 	/*
 	 * Check to see if the user typed "rm * .o" or something
 	 */
 	if (prompt)
-	    rmstar(&paraml);
+	    rmstar(&(*lexmem)->mem.ent);
 	/*
 	 * Parse the words of the input into a parse tree.
 	 */
-	t = syntax(paraml.next, &paraml, 0);
+	t = syntax((*lexmem)->mem.ent.next, &(*lexmem)->mem.ent, 0);
 	/*
 	 * We cannot cleanup push here, because cd /blah; echo foo
 	 * would rewind t on the chdir error, and free the rest of the command
 	 */
 	if (seterr) {
-	    freesyn(t);
+	    freesyn(&treeptr);
 	    stderror(ERR_OLD);
 	}
 
@@ -2130,7 +2138,7 @@ process(int catch)
 	 * <mlschroe@immd4.informatik.uni-erlangen.de> was execute(t, tpgrp);
 	 */
 	execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
-	freesyn(t);
+	freesyn(&treeptr);
 
 	/*
 	 * Made it!
@@ -2143,7 +2151,7 @@ process(int catch)
 	setcopy(STR_, InputBuf, VAR_READWRITE | VAR_NOGLOB);
     cmd_done:
 	if (cleanup_reset())
-	    cleanup_until(&paraml);
+	    cleanup_until(&lexptr);
 	else
 	    haderr = 1;
     }
@@ -2529,4 +2537,53 @@ grabpgrp(int fd, pid_t desired)
     }
     errno = EPERM;
     return -1;
+}
+
+static void
+xballoc(void)
+{
+    struct Memory *past;
+    struct Memory *new;
+
+    lexmem = xmalloc(sizeof *lexmem);
+    past = *lexmem;
+    lexptr = *lexmem;
+    while (++lexptr != &(*lexmem)[MEM_LEX]) {
+	new = lexptr;
+	new->next = *lexmem;
+	new->prev = past;
+	past->next = new;
+	past = new;
+    }
+    lexptr = *lexmem;
+    treemem = xmalloc(sizeof *treemem);
+    past = *treemem;
+    treeptr = *treemem;
+    while (++treeptr != &(*treemem)[MEM_TREE]) {
+	new = treeptr;
+	new->next = *treemem;
+	new->prev = past;
+	past->next = new;
+	past = new;
+    }
+    treeptr = *treemem;
+}
+
+void *
+xalloc(int type)
+{
+    switch (type) {
+    case ALLOC_LEX:
+	lexptr = lexptr->next;
+	if (lexptr == *lexmem)
+	    stderror(ERR_SILENT);
+	return &lexptr->mem.ent;
+    case ALLOC_TREE:
+	treeptr = treeptr->next;
+	if (treeptr == *treemem)
+	    stderror(ERR_SILENT);
+	return &treeptr->mem.tree;
+    }
+    stderror(ERR_SILENT);
+    return NULL;
 }
