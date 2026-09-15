@@ -162,7 +162,6 @@ lex(struct wordent *hp)
 	getexcl(c);
     else
 	unreadc(c);
-    cleanup_push(hp, lex_cleanup);
     wdp = hp;
     /*
      * The following loop is written so that the links needed by freelex will
@@ -171,7 +170,7 @@ lex(struct wordent *hp)
     do {
 	struct wordent *new;
 
-	new = xmalloc(sizeof(*new));
+	new = xalloc(ALLOC_LEX);
 	new->word = NULL;
 	new->prev = wdp;
 	new->next = hp;
@@ -180,12 +179,10 @@ lex(struct wordent *hp)
 	wdp = new;
 	wdp->word = word(parsehtime);
 	parsehtime = 0;
-	if (enterhist && toolong++ > 10 * 1024) {
+	if (enterhist && toolong++ > 1024) {
 	    stderror(ERR_LTOOLONG);
 	}
     } while (wdp->word[0] != '\n');
-    cleanup_ignore(hp);
-    cleanup_until(hp);
     Strbuf_terminate(&histline);
     if (histline.len != 0 && histline.s[histline.len - 1] == '\n')
 	histline.s[histline.len - 1] = '\0';
@@ -265,26 +262,18 @@ initlex(struct wordent *vp)
 }
 
 void
-freelex(struct wordent *vp)
+freelex(struct Memory **mem)
 {
-    struct wordent *fp;
-
-    while (vp->next != vp) {
-	fp = vp->next;
-	vp->next = fp->next;
-	xfree(fp->word);
-	xfree(fp);
-    }
-    vp->prev = vp;
+    *mem = *lexmem;
 }
 
 void
-lex_cleanup(void *xvp)
+lex_cleanup(void *xmem)
 {
-    struct wordent *vp;
+    struct Memory **mem;
 
-    vp = xvp;
-    freelex(vp);
+    mem = xmem;
+    freelex(mem);
 }
 
 static Char *
