@@ -636,14 +636,6 @@ STRBUF##_alloc(void)						\
 static void							\
 STRBUF##_store1(struct STRBUF *buf, CHAR c)			\
 {								\
-    if (buf->size == buf->len) {				\
-	if (buf->size == 0)					\
-	    buf->size = 64; /* Arbitrary */			\
-	else							\
-	    buf->size *= 2;					\
-	buf->s = xrealloc(buf->s, buf->size * sizeof(*buf->s));	\
-    }								\
-    assert(buf->s);						\
     buf->s[buf->len] = c;					\
 }								\
 								\
