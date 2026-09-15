@@ -157,7 +157,6 @@ asyn3(struct wordent *p1, struct wordent *p2)
     redid = lex(&alout);
     cleanup_until(&alvec);
     if (seterr) {
-	freelex(&alout);
 	stderror(ERR_OLD);
     }
     if (p1->word[0] && eq(p1->word, alout.next->word)) {
@@ -260,7 +259,7 @@ syn0(const struct wordent *p1, const struct wordent *p2, int flags)
 		t1->t_dtyp == NODE_AND ||
 		t1->t_dtyp == NODE_OR  ||
 		t1->t_dtyp == NODE_LINE) {
-		t = xcalloc(1, sizeof(*t));
+		t = xalloc(ALLOC_TREE);
 		t->t_dtyp = NODE_PAREN;
 		t->t_dflg = F_AMPERSAND | F_NOINTERRUPT;
 		t->t_dspr = t1;
@@ -268,7 +267,7 @@ syn0(const struct wordent *p1, const struct wordent *p2, int flags)
 	    }
 	    else
 		t1->t_dflg |= F_AMPERSAND | F_NOINTERRUPT;
-	    t = xcalloc(1, sizeof(*t));
+	    t = xalloc(ALLOC_TREE);
 	    t->t_dtyp = NODE_LIST;
 	    t->t_dflg = 0;
 	    t->t_dcar = t1;
@@ -323,7 +322,7 @@ syn1(const struct wordent *p1, const struct wordent *p2, int flags)
 	case '\n':
 	    if (l != 0)
 		break;
-	    t = xcalloc(1, sizeof(*t));
+	    t = xalloc(ALLOC_TREE);
 	    if (p->word[0] == ';')
 		t->t_dtyp = NODE_LINE;
 	    else
@@ -369,7 +368,7 @@ syn1a(const struct wordent *p1, const struct wordent *p2, int flags)
 	    if (p->word[1] != '|')
 		continue;
 	    if (l == 0) {
-		t = xcalloc(1, sizeof(*t));
+		t = xalloc(ALLOC_TREE);
 		t->t_dtyp = NODE_OR;
 		t->t_dcar = syn1b(p1, p, flags);
 		t->t_dcdr = syn1a(p->next, p2, flags);
@@ -409,7 +408,7 @@ syn1b(const struct wordent *p1, const struct wordent *p2, int flags)
 
 	case '&':
 	    if (p->word[1] == '&' && l == 0) {
-		t = xcalloc(1, sizeof(*t));
+		t = xalloc(ALLOC_TREE);
 		t->t_dtyp = NODE_AND;
 		t->t_dcar = syn2(p1, p, flags);
 		t->t_dcdr = syn1b(p->next, p2, flags);
@@ -452,7 +451,7 @@ syn2(const struct wordent *p1, const struct wordent *p2, int flags)
 	case '|':
 	    if (l != 0)
 		continue;
-	    t = xcalloc(1, sizeof(*t));
+	    t = xalloc(ALLOC_TREE);
 	    f = flags | P_OUT;
 	    pn = p->next;
 	    if (pn != p2 && pn->word[0] == '&') {
@@ -557,8 +556,8 @@ again:
 	}
     if (n < 0)
 	n = 0;
-    t = xcalloc(1, sizeof(*t));
-    av = xcalloc(n + 1, sizeof(Char **));
+    t = xalloc(ALLOC_TREE);
+    av = xalloc(ALLOC_TREE);
     t->t_dcom = av;
     n = 0;
     if (p2->word[0] == ')')
@@ -664,49 +663,18 @@ again:
 }
 
 void
-freesyn(struct command *t)
+freesyn(struct Memory **mem)
 {
-    Char **v;
-
-    if (t == 0)
-	return;
-    switch (t->t_dtyp) {
-
-    case NODE_COMMAND:
-	for (v = t->t_dcom; *v; v++)
-	    xfree(*v);
-	xfree(t->t_dcom);
-	xfree(t->t_dlef);
-	xfree(t->t_drit);
-	break;
-    case NODE_PAREN:
-	freesyn(t->t_dspr);
-	xfree(t->t_dlef);
-	xfree(t->t_drit);
-	break;
-
-    case NODE_AND:
-    case NODE_OR:
-    case NODE_PIPE:
-    case NODE_LIST:
-	freesyn(t->t_dcar), freesyn(t->t_dcdr);
-	break;
-    default:
-	break;
-    }
-#ifdef DEBUG
-    memset(t, 0, sizeof(*t));
-#endif
-    xfree(t);
+    *mem = *treemem;
 }
 
 void
-syntax_cleanup(void *xt)
+syntax_cleanup(void *xmem)
 {
-    struct command *t;
+    struct Memory **mem;
 
-    t = xt;
-    freesyn(t);
+    mem = xmem;
+    freesyn(mem);
 }
 
 void
