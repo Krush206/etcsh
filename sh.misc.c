@@ -108,16 +108,14 @@ blkpr(Char *const *av)
 Char *
 blkexpand(Char *const *av)
 {
-    struct Strbuf *buf;
+    struct Strbuf buf = Strbuf_INIT;
 
-    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     for (; *av; av++) {
-	Strbuf_append(buf, *av);
+	Strbuf_append(&buf, *av);
 	if (av[1])
-	    Strbuf_append1(buf, ' ');
+	    Strbuf_append1(&buf, ' ');
     }
-    cleanup_until(buf);
-    return buf->s;
+    return Strbuf_finish(&buf);
 }
 
 int
