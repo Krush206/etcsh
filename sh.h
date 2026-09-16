@@ -1239,6 +1239,7 @@ extern char   **environ;
 #define ALLOC_CHARBLK 3
 #define ALLOC_SHORTBLK 4
 #define ALLOC_SHORTSTR 5
+#define ALLOC_CHARSTR 6
 
 #define MEM_LEXBUF 128
 #define MEM_TREEBUF 128
@@ -1246,6 +1247,7 @@ extern char   **environ;
 #define MEM_STRLEN 4096
 #define MEM_CHARBLK 128
 #define MEM_SHORTBLK 128
+#define MEM_CHARSTR 4096
 #define MEM_SHORTSTR 4096
 
 #include "tc.h"
@@ -1352,6 +1354,7 @@ struct Memory {
 	struct Strbuf Strbuf;
 	struct strbuf strbuf;
 	char *cbbuf[MEM_CHARBLK];
+	char csbuf[MEM_CHARSTR];
 	Char *sbbuf[MEM_SHORTBLK];
 	Char ssbuf[MEM_SHORTSTR];
     } mem;
@@ -1366,6 +1369,7 @@ extern struct Memory (*strmem)[];
 extern struct Memory (*cbmem)[];
 extern struct Memory (*sbmem)[];
 extern struct Memory (*ssmem)[];
+extern struct Memory (*csmem)[];
 
 #include "sh.decls.h"
 /*
