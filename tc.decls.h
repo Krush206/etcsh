@@ -307,7 +307,7 @@ extern  void		  strbuf_appendn(struct strbuf *, const char *,
 extern  void		  strbuf_append (struct strbuf *, const char *);
 extern  char		 *strbuf_finish (struct strbuf *);
 extern	void		  strbuf_cleanup(void *);
-extern	void		  strbuf_free(struct strbuf *);
+extern	void		  strbuf_free(void *);
 extern	struct Strbuf	 *Strbuf_alloc(void);
 extern	void		  Strbuf_terminate(struct Strbuf *);
 extern  void		  Strbuf_append1(struct Strbuf *, Char);
@@ -316,7 +316,7 @@ extern  void		  Strbuf_appendn(struct Strbuf *, const Char *,
 extern  void		  Strbuf_append (struct Strbuf *, const Char *);
 extern  Char		 *Strbuf_finish (struct Strbuf *);
 extern	void		  Strbuf_cleanup(void *);
-extern	void		  Strbuf_free(struct Strbuf *);
+extern	void		  Strbuf_free(void *);
 
 
 /*
