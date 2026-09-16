@@ -179,7 +179,7 @@ lex(struct wordent *hp)
 	wdp = new;
 	wdp->word = word(parsehtime);
 	parsehtime = 0;
-	if (enterhist && toolong++ > 1024) {
+	if (enterhist && toolong++ > 10 * 1024) {
 	    stderror(ERR_LTOOLONG);
 	}
     } while (wdp->word[0] != '\n');
@@ -262,18 +262,19 @@ initlex(struct wordent *vp)
 }
 
 void
-freelex(struct Memory **mem)
+freelex(void)
 {
-    *mem = *lexmem;
+    struct Memory *ptr;
+
+    for (ptr = (*lexmem)->next; ptr != *lexmem; ptr = ptr->next)
+	ptr->use = 0;
 }
 
 void
 lex_cleanup(void *xmem)
 {
-    struct Memory **mem;
-
-    mem = xmem;
-    freelex(mem);
+    USE(xmem);
+    freelex();
 }
 
 static Char *
