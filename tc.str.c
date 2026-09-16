@@ -202,20 +202,20 @@ short2blk(Char **src)
 Char   *
 str2short(const char *src)
 {
-    static struct Strbuf buf; /* = Strbuf_INIT; */
+    struct Strbuf *buf; /* = Strbuf_INIT; */
 
     if (src == NULL)
 	return (NULL);
 
-    buf.len = 0;
+    buf->len = 0;
     while (*src) {
 	Char wc;
 
 	src += one_mbtowc(&wc, src, MB_LEN_MAX);
-	Strbuf_append1(&buf, wc);
+	Strbuf_append1(buf, wc);
     }
-    Strbuf_terminate(&buf);
-    return buf.s;
+    Strbuf_terminate(buf);
+    return buf->s;
 }
 
 char   *
@@ -687,7 +687,7 @@ STRBUF##_free(struct STRBUF *buf)				\
     for (ptr = (*strmem)->next;					\
 	 ptr != *strmem;					\
 	 ptr = ptr->next)					\
-	if (&ptr->mem.str == buf) {				\
+	if (&ptr->mem.STRBUF == buf) {				\
 	    ptr->use = 0;					\
 	    return;						\
 	}							\
