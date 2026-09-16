@@ -403,10 +403,11 @@ static const Char *
 tw_dollar(const Char *str, Char **wl, size_t nwl, Char **result, Char sep,
 	  const char *msg)
 {
-    struct Strbuf buf = Strbuf_INIT;
+    struct Strbuf *buf;
     Char *res;
     const Char *sp;
 
+    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     for (sp = str; *sp && *sp != sep;)
 	if (sp[0] == '$' && sp[1] == ':' && Isdigit(sp[sp[2] == '-' ? 3 : 2])) {
 	    int num, neg = 0;
@@ -420,19 +421,19 @@ tw_dollar(const Char *str, Char **wl, size_t nwl, Char **result, Char sep,
 	    if (neg)
 		num = nwl - num - 1;
 	    if (num >= 0 && (size_t)num < nwl)
-		Strbuf_append(&buf, wl[num]);
+		Strbuf_append(buf, wl[num]);
 	}
 	else
-	    Strbuf_append1(&buf, *sp++);
+	    Strbuf_append1(buf, *sp++);
 
-    res = Strbuf_finish(&buf);
+    cleanup_until(buf);
+    res = buf->s;
 
     if (*sp++ == sep) {
 	*result = res;
 	return sp;
     }
 
-    xfree(res);
     /* Truncates data if WIDE_STRINGS */
     stderror(ERR_COMPMIS, (int)sep, msg, short2str(str));
     return --sp;
