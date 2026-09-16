@@ -630,12 +630,14 @@ bb_finish(struct blk_buf *bb)
 struct STRBUF *							\
 STRBUF##_alloc(void)						\
 {								\
-    return xcalloc(1, sizeof(struct STRBUF));			\
+    return xalloc(ALLOC_STRBUF);				\
 }								\
 								\
 static void							\
 STRBUF##_store1(struct STRBUF *buf, CHAR c)			\
 {								\
+    if (buf->len >= MEM_STRLEN)					\
+	stderror(ERR_NOMEM);					\
     buf->s[buf->len] = c;					\
 }								\
 								\
@@ -643,7 +645,7 @@ STRBUF##_store1(struct STRBUF *buf, CHAR c)			\
 void								\
 STRBUF##_terminate(struct STRBUF *buf)				\
 {								\
-    STRBUF##_store1(buf, '\0');					\
+    STRBUF##_store1(buf, (Char) 0);				\
 }								\
 								\
 void								\
@@ -656,14 +658,9 @@ STRBUF##_append1(struct STRBUF *buf, CHAR c)			\
 void								\
 STRBUF##_appendn(struct STRBUF *buf, const CHAR *s, size_t len)	\
 {								\
-    if (buf->size < buf->len + len) {				\
-	if (buf->size == 0)					\
-	    buf->size = 64; /* Arbitrary */			\
-	while (buf->size < buf->len + len)			\
-	    buf->size *= 2;					\
-	buf->s = xrealloc(buf->s, buf->size * sizeof(*buf->s));	\
-    }								\
-    memcpy(buf->s + buf->len, s, len * sizeof(*buf->s));	\
+    if (buf->len + len >= MEM_STRLEN)				\
+	stderror(ERR_NOMEM);					\
+    (void) memcpy(buf->s + buf->len, s, len * sizeof *buf->s);	\
     buf->len += len;						\
 }								\
 								\
@@ -673,27 +670,28 @@ STRBUF##_append(struct STRBUF *buf, const CHAR *s)		\
     STRBUF##_appendn(buf, s, STRLEN(s));			\
 }								\
 								\
-CHAR *								\
-STRBUF##_finish(struct STRBUF *buf)				\
-{								\
-    STRBUF##_append1(buf, 0);					\
-    return xrealloc(buf->s, buf->len * sizeof(*buf->s));	\
-}								\
-								\
 void								\
 STRBUF##_cleanup(void *xbuf)					\
 {								\
     struct STRBUF *buf;						\
 								\
     buf = xbuf;							\
-    xfree(buf->s);						\
+    STRBUF##_free(buf);						\
 }								\
 								\
 void								\
-STRBUF##_free(void *xbuf)					\
+STRBUF##_free(struct STRBUF *buf)				\
 {								\
-    STRBUF##_cleanup(xbuf);					\
-    xfree(xbuf);						\
+    struct Memory *ptr;						\
+								\
+    for (ptr = (*strmem)->next;					\
+	 ptr != *strmem;					\
+	 ptr = ptr->next)					\
+	if (&ptr->mem.str == buf) {				\
+	    ptr->use = 0;					\
+	    return;						\
+	}							\
+    abort();							\
 }								\
 								\
 const struct STRBUF STRBUF##_init /* = STRBUF##_INIT; */
