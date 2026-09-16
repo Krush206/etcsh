@@ -993,9 +993,7 @@ histgetword(struct wordent *histent)
     eChar c, d;
     int e;
     struct Strbuf *tmp;
-    tmp = xmalloc(sizeof(*tmp));
-    tmp->size = 0;
-    tmp->s = NULL;
+    tmp = xalloc(ALLOC_STRBUF);
     c = readc(1);
     d = 0;
     e = 0;
@@ -2864,7 +2862,7 @@ srchenc(struct CommandList *lp)
     return 0;
 }
 
-static struct StrbufList strtmp = { { NULL, 0, 0 }, &strtmp, &strtmp };
+static struct StrbufList strtmp = { { { '\0' }, 0, 0 }, &strtmp, &strtmp };
 static struct StrbufList *strptr = &strtmp;
 
 void
