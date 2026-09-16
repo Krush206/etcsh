@@ -1233,6 +1233,15 @@ extern int	NoNLSRebind;
 extern char   **environ;
 #endif
 
+#define ALLOC_LEX 0
+#define ALLOC_TREE 1
+#define ALLOC_STRBUF 2
+
+#define MEM_LEX 128
+#define MEM_TREE 128
+#define MEM_STRBUF 128
+#define MEM_STRLEN 1024
+
 #include "tc.h"
 
 #ifndef WINNT_NATIVE
@@ -1333,23 +1342,19 @@ extern struct CommandList *dolptr;
 struct Memory {
     union {
 	struct command tree;
-	struct wordent ent;
+	struct wordent lex;
+	struct Strbuf str;
     } mem;
+    int use;
     struct Memory *next;
     struct Memory *prev;
 };
 
 extern struct Memory (*lexmem)[];
-extern struct Memory *lexptr;
 
 extern struct Memory (*treemem)[];
-extern struct Memory *treeptr;
 
-#define ALLOC_LEX 1
-#define ALLOC_TREE 2
-
-#define MEM_LEX 128
-#define MEM_TREE 128
+extern struct Memory (*strmem)[];
 
 #include "sh.decls.h"
 /*
