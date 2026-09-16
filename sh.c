@@ -75,6 +75,8 @@ extern int NLSMapsAreInited;
  * ported to Apple Unix (TM) (OREO)  26 -- 29 Jun 1987
  */
 
+struct Memory (*mem)[MEM_MAX];
+
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
 
@@ -112,6 +114,7 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
+static	void		  xballoc	(void);
 static	int		  srccat	(Char *, Char *);
 #ifndef WINNT_NATIVE
 static	int		  srcfile	(const char *, int, int, Char **);
@@ -222,6 +225,7 @@ main(int argc, char **argv)
     nt_init();
 #endif /* WINNT_NATIVE */
 
+    xballoc();
     (void)memset(&reslab, 0, sizeof(reslab));
 #if defined(NLS_CATALOGS) && defined(LC_MESSAGES)
     (void) setlocale(LC_MESSAGES, "");
@@ -2529,4 +2533,88 @@ grabpgrp(int fd, pid_t desired)
     }
     errno = EPERM;
     return -1;
+}
+
+void *
+xcalloc(size_t n, size_t size)
+{
+    size_t total;
+    void *new;
+
+    total = n * size;
+    if (total >= BUF_MAX)
+	stderror(ERR_NOMEM);
+    new = xmalloc(total);
+    if (new == NULL)
+	stderror(ERR_NOMEM);
+    return memset(new, 0, total);
+}
+
+void *
+xrealloc(void *ptr, size_t size)
+{
+    void *new;
+
+    if (size == 0)
+	return NULL;
+    if (ptr == NULL)
+	return xmalloc(size);
+    new = xmalloc(size);
+    if (new == NULL)
+	stderror(ERR_NOMEM);
+    (void) memcpy(new, ptr, size);
+    xfree(ptr);
+    return new;
+}
+
+void *
+xmalloc(size_t size)
+{
+    struct Memory *ptr;
+
+    if (size >= BUF_MAX)
+	stderror(ERR_NOMEM);
+    for (ptr = (*mem)->next; ptr != *mem; ptr = ptr->next)
+	if (!ptr->use) {
+	    ptr->use = 1;
+	    return ptr->alloc = &ptr->buf[BUF_MAX - size];
+	}
+    stderror(ERR_NOMEM);
+    return NULL;
+}
+
+void
+xballoc(void)
+{
+    struct Memory *new;
+    struct Memory *past;
+
+#ifdef SYSMALLOC
+    mem = smalloc(sizeof *mem);
+#else
+    mem = malloc(sizeof *mem);
+#endif
+    new = *mem;
+    past = *mem;
+    while (++new != &(*mem)[MEM_MAX]) {
+	new->use = 0;
+	new->next = *mem;
+	new->prev = past;
+	past->next = new;
+	past = new;
+    }
+    (*mem)->prev = new;
+}
+
+void
+xfree(void *ptr)
+{
+    struct Memory *f;
+
+    for (f = (*mem)->next; f != *mem; f = f->next)
+	if (f->alloc == ptr) {
+	    f->use = 0;
+	    return;
+	}
+    stderror(ERR_SILENT);
 }
