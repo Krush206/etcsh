@@ -201,11 +201,12 @@ static int
 Dword(struct blk_buf *bb)
 {
     eChar c, c1;
-    struct Strbuf *wbuf;
+    struct Strbuf *wbuf = Strbuf_alloc();
     int dolflg;
     int    sofar = 0;
+    Char *str;
 
-    cleanup_push(wbuf = Strbuf_alloc(), Strbuf_cleanup);
+    cleanup_push(wbuf, Strbuf_free);
     for (;;) {
 	c = DgetC(DODOL);
 	switch (c) {
@@ -298,8 +299,10 @@ Dword(struct blk_buf *bb)
     }
 
  end:
+    cleanup_ignore(wbuf);
     cleanup_until(wbuf);
-    bb_append(bb, wbuf->s);
+    str = Strbuf_finish(wbuf);
+    bb_append(bb, str);
     xfree(wbuf);
     return 1;
 }
@@ -376,7 +379,7 @@ Dgetdol(void)
     int    dimen = 0, bitset = 0, length = 0;
     static Char *dolbang = NULL;
 
-    cleanup_push(name, Strbuf_cleanup);
+    cleanup_push(name, Strbuf_free);
     dolmod.len = ndolflags = 0;
     c = sc = DgetC(0);
     if (c == DEOF) {
@@ -387,7 +390,7 @@ Dgetdol(void)
 	const Char *cp;
 	struct Strbuf *expanded = Strbuf_alloc();
 
-	cleanup_push(expanded, Strbuf_cleanup);
+	cleanup_push(expanded, Strbuf_free);
 	for (;;) {
 	    c = DgetC(0);
 	    if ((c & TRIM) == '\'')
@@ -444,16 +447,15 @@ Dgetdol(void)
 
     case '<'|QUOTE: {
 	static struct Strbuf wbuf; /* = Strbuf_INIT; */
-	static Char peekc;
+	static Char peekc[2];
 
 	if (bitset) {
-	    if (isatty(OLDSTD) || peekc)
-		setDolp(STR1);
-	    else if (force_read(OLDSTD, &c, (size_t) 1) > 0) {
-		peekc = c;
-		setDolp(STR1);
-	    } else
+	    if (isatty(OLDSTD) || *peekc)
 		setDolp(STR0);
+	    else if (force_read(OLDSTD, peekc, 1) > 0)
+		setDolp(STR0);
+	    else
+		setDolp(STR1);
 	    cleanup_until(name);
 	    goto eatbrac;
 	}
@@ -516,14 +518,9 @@ Dgetdol(void)
 	}
 
 	fixDolMod();
-	if (peekc && peekc != ('\n' | QUOTE)) {
-	    Char (*peekla)[2];
-
-	    peekla = xmalloc(sizeof *peekla);
-	    (*peekla)[0] = peekc;
-	    (*peekla)[1] = '\0';
-	    addla(*peekla);
-	    peekc = '\0';
+	if (*peekc) {
+	    addla(Strsave(peekc));
+	    *peekc = 0;
 	}
 	setDolp(wbuf.s); /* Kept allocated until next $< expansion */
 	cleanup_until(name);
@@ -651,7 +648,7 @@ Dgetdol(void)
     upb = blklen(vp->vec);
     if (dimen == 0 && subscr == 0 && c == '[') {
 	name = Strbuf_alloc();
-	cleanup_push(name, Strbuf_cleanup);
+	cleanup_push(name, Strbuf_free);
 	np = name->s;
 	for (;;) {
 	    c = DgetC(DODOL);	/* Allow $ expand within [ ] */
@@ -1021,7 +1018,7 @@ heredoc(Char *term)
 {
     eChar  c;
     Char   *Dv[2];
-    struct Strbuf *lbuf, *mbuf;
+    struct Strbuf lbuf = Strbuf_INIT, mbuf = Strbuf_INIT;
     Char    obuf[BUFSIZE + 1];
 #define OBUF_END (obuf + sizeof(obuf) / sizeof (*obuf) - 1)
     Char *lbp, *obp, *mbp;
@@ -1083,41 +1080,41 @@ again:
 #ifdef WINNT_NATIVE
     __dup_stdin = 1;
 #endif /* WINNT_NATIVE */
-    cleanup_push(lbuf = Strbuf_alloc(), Strbuf_cleanup);
-    cleanup_push(mbuf = Strbuf_alloc(), Strbuf_cleanup);
+    cleanup_push(&lbuf, Strbuf_cleanup);
+    cleanup_push(&mbuf, Strbuf_cleanup);
     for (;;) {
 	Char **words;
 
 	/*
 	 * Read up a line
 	 */
-	lbuf->len = 0;
+	lbuf.len = 0;
 	for (;;) {
 	    c = readc(1);	/* 1 -> Want EOF returns */
 	    if (c == CHAR_ERR || c == '\n')
 		break;
 	    if ((c &= TRIM) != 0)
-		Strbuf_append1(lbuf, (Char) c);
+		Strbuf_append1(&lbuf, (Char) c);
 	}
-	Strbuf_terminate(lbuf);
+	Strbuf_terminate(&lbuf);
 
 	/* Catch EOF in the middle of a line. */
-	if (c == CHAR_ERR && lbuf->len != 0)
+	if (c == CHAR_ERR && lbuf.len != 0)
 	    c = '\n';
 
 	/*
 	 * Check for EOF or compare to terminator -- before expansion
 	 */
-	if (c == CHAR_ERR || eq(lbuf->s, term))
+	if (c == CHAR_ERR || eq(lbuf.s, term))
 	    break;
 
 	/*
 	 * If term was quoted or -n just pass it on
 	 */
 	if (quoted || noexec) {
-	    Strbuf_append1(lbuf, '\n');
-	    Strbuf_terminate(lbuf);
-	    for (lbp = lbuf->s; (c = *lbp++) != 0;) {
+	    Strbuf_append1(&lbuf, '\n');
+	    Strbuf_terminate(&lbuf);
+	    for (lbp = lbuf.s; (c = *lbp++) != 0;) {
 		*obp++ = (Char) c;
 		if (obp == OBUF_END) {
 		    tmp = short2str(obuf);
@@ -1132,9 +1129,9 @@ again:
 	 * Term wasn't quoted so variable and then command expand the input
 	 * line
 	 */
-	Dcp = lbuf->s;
+	Dcp = lbuf.s;
 	Dvp = Dv + 1;
-	mbuf->len = 0;
+	mbuf.len = 0;
 	for (;;) {
 	    c = DgetC(DODOL);
 	    if (c == DEOF)
@@ -1149,14 +1146,14 @@ again:
 		else
 		    c |= QUOTE;
 	    }
-	    Strbuf_append1(mbuf, (Char) c);
+	    Strbuf_append1(&mbuf, (Char) c);
 	}
-	Strbuf_terminate(mbuf);
+	Strbuf_terminate(&mbuf);
 
 	/*
 	 * If any ` in line do command substitution
 	 */
-	mbp = mbuf->s;
+	mbp = mbuf.s;
 	if (Strchr(mbp, '`') != NULL) {
 	    /*
 	     * 1 arg to dobackp causes substitution to be literal. Words are
