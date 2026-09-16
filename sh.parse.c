@@ -259,7 +259,7 @@ syn0(const struct wordent *p1, const struct wordent *p2, int flags)
 		t1->t_dtyp == NODE_AND ||
 		t1->t_dtyp == NODE_OR  ||
 		t1->t_dtyp == NODE_LINE) {
-		t = xalloc(ALLOC_TREE);
+		t = xalloc(ALLOC_TREEBUF);
 		t->t_dtyp = NODE_PAREN;
 		t->t_dflg = F_AMPERSAND | F_NOINTERRUPT;
 		t->t_dspr = t1;
@@ -267,7 +267,7 @@ syn0(const struct wordent *p1, const struct wordent *p2, int flags)
 	    }
 	    else
 		t1->t_dflg |= F_AMPERSAND | F_NOINTERRUPT;
-	    t = xalloc(ALLOC_TREE);
+	    t = xalloc(ALLOC_TREEBUF);
 	    t->t_dtyp = NODE_LIST;
 	    t->t_dflg = 0;
 	    t->t_dcar = t1;
@@ -322,7 +322,7 @@ syn1(const struct wordent *p1, const struct wordent *p2, int flags)
 	case '\n':
 	    if (l != 0)
 		break;
-	    t = xalloc(ALLOC_TREE);
+	    t = xalloc(ALLOC_TREEBUF);
 	    if (p->word[0] == ';')
 		t->t_dtyp = NODE_LINE;
 	    else
@@ -368,7 +368,7 @@ syn1a(const struct wordent *p1, const struct wordent *p2, int flags)
 	    if (p->word[1] != '|')
 		continue;
 	    if (l == 0) {
-		t = xalloc(ALLOC_TREE);
+		t = xalloc(ALLOC_TREEBUF);
 		t->t_dtyp = NODE_OR;
 		t->t_dcar = syn1b(p1, p, flags);
 		t->t_dcdr = syn1a(p->next, p2, flags);
@@ -408,7 +408,7 @@ syn1b(const struct wordent *p1, const struct wordent *p2, int flags)
 
 	case '&':
 	    if (p->word[1] == '&' && l == 0) {
-		t = xalloc(ALLOC_TREE);
+		t = xalloc(ALLOC_TREEBUF);
 		t->t_dtyp = NODE_AND;
 		t->t_dcar = syn2(p1, p, flags);
 		t->t_dcdr = syn1b(p->next, p2, flags);
@@ -451,7 +451,7 @@ syn2(const struct wordent *p1, const struct wordent *p2, int flags)
 	case '|':
 	    if (l != 0)
 		continue;
-	    t = xalloc(ALLOC_TREE);
+	    t = xalloc(ALLOC_TREEBUF);
 	    f = flags | P_OUT;
 	    pn = p->next;
 	    if (pn != p2 && pn->word[0] == '&') {
@@ -556,8 +556,8 @@ again:
 	}
     if (n < 0)
 	n = 0;
-    t = xalloc(ALLOC_TREE);
-    av = xalloc(ALLOC_TREE);
+    t = xalloc(ALLOC_TREEBUF);
+    av = xalloc(ALLOC_TREEBUF);
     t->t_dcom = av;
     n = 0;
     if (p2->word[0] == ')')
