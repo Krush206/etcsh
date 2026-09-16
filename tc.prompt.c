@@ -177,7 +177,7 @@ tprintf_append_mbs(struct Strbuf *buf, const char *mbs, Char attributes)
 Char *
 tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 {
-    struct Strbuf buf = Strbuf_INIT;
+    struct Strbuf *buf;
     Char   *z, *q;
     Char    attributes = 0;
     static int print_prompt_did_ding = 0;
@@ -193,7 +193,7 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
     int updirs;
     size_t pdirs;
 
-    cleanup_push(&buf, Strbuf_cleanup);
+    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     for (; *cp; cp++) {
 	if ((*cp == '%') && ! (cp[1] == '\0')) {
 	    cp++;
@@ -201,11 +201,11 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 	    case 'R':
 		if (what == FMT_HISTORY) {
 		    cz = fmthist('R', info);
-		    tprintf_append_mbs(&buf, cz, attributes);
+		    tprintf_append_mbs(buf, cz, attributes);
 		    xfree(cz);
 		} else {
 		    if (str != NULL)
-			tprintf_append_mbs(&buf, str, attributes);
+			tprintf_append_mbs(buf, str, attributes);
 		}
 		break;
 	    case '#':
@@ -226,7 +226,7 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 		Scp = (uid == 0 || euid == 0) ? PRCHROOT : PRCH;
 #endif
 		if (Scp != '\0')
-		    Strbuf_append1(&buf, attributes | Scp);
+		    Strbuf_append1(buf, attributes | Scp);
 		break;
 	    case '!':
 	    case 'h':
@@ -241,7 +241,7 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 		    cz = xasprintf("%d", eventno + 1);
 		    break;
 		}
-		tprintf_append_mbs(&buf, cz, attributes);
+		tprintf_append_mbs(buf, cz, attributes);
 		xfree(cz);
 		break;
 	    case 'T':		/* 24 hour format	 */
@@ -275,28 +275,28 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 			 * by ADAM David Alan Martin
 			 */
 			p = Itoa(hr, adrof(STRpadhour) ? 2 : 0, attributes);
-			Strbuf_append(&buf, p);
+			Strbuf_append(buf, p);
 			xfree(p);
-			Strbuf_append1(&buf, attributes | ':');
+			Strbuf_append1(buf, attributes | ':');
 			p = Itoa(t->tm_min, 2, attributes);
-			Strbuf_append(&buf, p);
+			Strbuf_append(buf, p);
 			xfree(p);
 			if (*cp == 'p' || *cp == 'P') {
-			    Strbuf_append1(&buf, attributes | ':');
+			    Strbuf_append1(buf, attributes | ':');
 			    p = Itoa(t->tm_sec, 2, attributes);
-			    Strbuf_append(&buf, p);
+			    Strbuf_append(buf, p);
 			    xfree(p);
 			}
 			if (adrof(STRampm) || (*cp != 'T' && *cp != 'P')) {
-			    Strbuf_append1(&buf, attributes | ampm);
-			    Strbuf_append1(&buf, attributes | 'm');
+			    Strbuf_append1(buf, attributes | ampm);
+			    Strbuf_append1(buf, attributes | 'm');
 			}
 		    }
 		    else {	/* we need to ding */
 			size_t i;
 
 			for (i = 0; STRDING[i] != 0; i++)
-			    Strbuf_append1(&buf, attributes | STRDING[i]);
+			    Strbuf_append1(buf, attributes | STRDING[i]);
 			print_prompt_did_ding = 1;
 		    }
 		}
@@ -314,7 +314,7 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 		 * derefrence that NULL (if HOST is not set)...
 		 */
 		if (cz != NULL)
-		    tprintf_append_mbs(&buf, cz, attributes);
+		    tprintf_append_mbs(buf, cz, attributes);
 		if (what == FMT_WHO)
 		    xfree(cz);
 		break;
@@ -333,7 +333,7 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 			Char wc;
 
 			cz += one_mbtowc(&wc, cz, MB_LEN_MAX);
-			Strbuf_append1(&buf, wc | attributes);
+			Strbuf_append1(buf, wc | attributes);
 		    }
 		if (scz)
 		    xfree(scz);
@@ -370,14 +370,14 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 #ifdef WINNT_NATIVE
 		    Char *oldz = z;
 		    if (z[1] == ':') {
-			Strbuf_append1(&buf, attributes | *z++);
-			Strbuf_append1(&buf, attributes | *z++);
+			Strbuf_append1(buf, attributes | *z++);
+			Strbuf_append1(buf, attributes | *z++);
 		    }
 		    if (*z == '/' && z[1] == '/') {
-			Strbuf_append1(&buf, attributes | *z++);
-			Strbuf_append1(&buf, attributes | *z++);
+			Strbuf_append1(buf, attributes | *z++);
+			Strbuf_append1(buf, attributes | *z++);
 			do {
-			    Strbuf_append1(&buf, attributes | *z++);
+			    Strbuf_append1(buf, attributes | *z++);
 			} while (*z != '/');
 		    }
 #endif /* WINNT_NATIVE */
@@ -395,7 +395,7 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 		     * //machine/share/folder => //machine:folder
 		     */
 		    if (oldz[0] == '/' && oldz[1] == '/' && updirs > 1)
-			Strbuf_append1(&buf, attributes | ':');
+			Strbuf_append1(buf, attributes | ':');
 #endif /* WINNT_NATIVE */
 		    if ((Scp == 'C' && *q != '/'))
 			updirs++;
@@ -425,39 +425,39 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 							/* print ~[user] */
 		if ((olduser) && ((Scp == '~') ||
 		     (Scp == '.' && (pdirs || (!pdirs && updirs <= 0))) )) {
-		    Strbuf_append1(&buf, attributes | '~');
+		    Strbuf_append1(buf, attributes | '~');
 		    for (q = olduser; *q; q++)
-			Strbuf_append1(&buf, attributes | *q);
+			Strbuf_append1(buf, attributes | *q);
 		}
 
 			/* RWM - tell you how many dirs we've ignored */
 			/*       and add '/' at front of this         */
 		if (updirs > 0 && pdirs) {
 		    if (adrof(STRellipsis)) {
-			Strbuf_append1(&buf, attributes | '.');
-			Strbuf_append1(&buf, attributes | '.');
-			Strbuf_append1(&buf, attributes | '.');
+			Strbuf_append1(buf, attributes | '.');
+			Strbuf_append1(buf, attributes | '.');
+			Strbuf_append1(buf, attributes | '.');
 		    } else {
-			Strbuf_append1(&buf, attributes | '/');
-			Strbuf_append1(&buf, attributes | '<');
+			Strbuf_append1(buf, attributes | '/');
+			Strbuf_append1(buf, attributes | '<');
 			if (updirs > 9) {
-			    Strbuf_append1(&buf, attributes | '9');
-			    Strbuf_append1(&buf, attributes | '+');
+			    Strbuf_append1(buf, attributes | '9');
+			    Strbuf_append1(buf, attributes | '+');
 			} else
-			    Strbuf_append1(&buf, attributes | ('0' + updirs));
-			Strbuf_append1(&buf, attributes | '>');
+			    Strbuf_append1(buf, attributes | ('0' + updirs));
+			Strbuf_append1(buf, attributes | '>');
 		    }
 		}
 
 		while (*z)
-		    Strbuf_append1(&buf, attributes | *z++);
+		    Strbuf_append1(buf, attributes | *z++);
 		break;
 
 	    case 'n':
 #ifndef HAVENOUTMP
 		if (what == FMT_WHO) {
 		    cz = who_info(info, 'n');
-		    tprintf_append_mbs(&buf, cz, attributes);
+		    tprintf_append_mbs(buf, cz, attributes);
 		    xfree(cz);
 		}
 		else
@@ -465,19 +465,19 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 		{
 		    if ((z = varval(STRuser)) != STRNULL)
 			while (*z)
-			    Strbuf_append1(&buf, attributes | *z++);
+			    Strbuf_append1(buf, attributes | *z++);
 		}
 		break;
 	    case 'N':
 		if ((z = varval(STReuser)) != STRNULL)
 		    while (*z)
-			Strbuf_append1(&buf, attributes | *z++);
+			Strbuf_append1(buf, attributes | *z++);
 		break;
 	    case 'l':
 #ifndef HAVENOUTMP
 		if (what == FMT_WHO) {
 		    cz = who_info(info, 'l');
-		    tprintf_append_mbs(&buf, cz, attributes);
+		    tprintf_append_mbs(buf, cz, attributes);
 		    xfree(cz);
 		}
 		else
@@ -485,33 +485,33 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 		{
 		    if ((z = varval(STRtty)) != STRNULL)
 			while (*z)
-			    Strbuf_append1(&buf, attributes | *z++);
+			    Strbuf_append1(buf, attributes | *z++);
 		}
 		break;
 	    case 'd':
-		tprintf_append_mbs(&buf, day_list[t->tm_wday], attributes);
+		tprintf_append_mbs(buf, day_list[t->tm_wday], attributes);
 		break;
 	    case 'D':
 		p = Itoa(t->tm_mday, 2, attributes);
-		Strbuf_append(&buf, p);
+		Strbuf_append(buf, p);
 		xfree(p);
 		break;
 	    case 'w':
-		tprintf_append_mbs(&buf, month_list[t->tm_mon], attributes);
+		tprintf_append_mbs(buf, month_list[t->tm_mon], attributes);
 		break;
 	    case 'W':
 		p = Itoa(t->tm_mon + 1, 2, attributes);
-		Strbuf_append(&buf, p);
+		Strbuf_append(buf, p);
 		xfree(p);
 		break;
 	    case 'y':
 		p = Itoa(t->tm_year % 100, 2, attributes);
-		Strbuf_append(&buf, p);
+		Strbuf_append(buf, p);
 		xfree(p);
 		break;
 	    case 'Y':
 		p = Itoa(t->tm_year + 1900, 4, attributes);
-		Strbuf_append(&buf, p);
+		Strbuf_append(buf, p);
 		xfree(p);
 		break;
 	    case 'S':		/* start standout */
@@ -546,22 +546,22 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 		    if (njobs == -1)
 			njobs++;
 		    p = Itoa(njobs, 1, attributes);
-		    Strbuf_append(&buf, p);
+		    Strbuf_append(buf, p);
 		    xfree(p);
 		    break;
 		}
 	    case '?':
 		if ((z = varval(STRstatus)) != STRNULL)
 		    while (*z)
-			Strbuf_append1(&buf, attributes | *z++);
+			Strbuf_append1(buf, attributes | *z++);
 		break;
 	    case '$':
-		expdollar(&buf, &cp, attributes);
+		expdollar(buf, &cp, attributes);
 		/* cp should point the last char of current % sequence */
 		cp--;
 		break;
 	    case '%':
-		Strbuf_append1(&buf, attributes | '%');
+		Strbuf_append1(buf, attributes | '%');
 		break;
 	    case '{':		/* literal characters start */
 #if LITERAL == 0
@@ -581,34 +581,33 @@ tprintf(int what, const Char *fmt, const char *str, time_t tim, ptr_t info)
 #ifndef HAVENOUTMP
 		if (*cp == 'a' && what == FMT_WHO) {
 		    cz = who_info(info, 'a');
-		    tprintf_append_mbs(&buf, cz, attributes);
+		    tprintf_append_mbs(buf, cz, attributes);
 		    xfree(cz);
 		}
 		else
 #endif /* HAVENOUTMP */
 		{
-		    Strbuf_append1(&buf, attributes | '%');
-		    Strbuf_append1(&buf, attributes | *cp);
+		    Strbuf_append1(buf, attributes | '%');
+		    Strbuf_append1(buf, attributes | *cp);
 		}
 		break;
 	    }
 	}
 	else if (*cp == '\\' || *cp == '^')
-	    Strbuf_append1(&buf, attributes | parseescape(&cp, TRUE));
+	    Strbuf_append1(buf, attributes | parseescape(&cp, TRUE));
 	else if (*cp == HIST) {	/* EGS: handle '!'s in prompts */
 	    if (what == FMT_HISTORY)
 		cz = fmthist('h', info);
 	    else
 		cz = xasprintf("%d", eventno + 1);
-	    tprintf_append_mbs(&buf, cz, attributes);
+	    tprintf_append_mbs(buf, cz, attributes);
 	    xfree(cz);
 	}
 	else
-	    Strbuf_append1(&buf, attributes | *cp); /* normal character */
+	    Strbuf_append1(buf, attributes | *cp); /* normal character */
     }
-    cleanup_ignore(&buf);
-    cleanup_until(&buf);
-    return Strbuf_finish(&buf);
+    cleanup_until(buf);
+    return buf->s;
 }
 
 int
