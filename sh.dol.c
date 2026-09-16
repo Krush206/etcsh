@@ -201,12 +201,11 @@ static int
 Dword(struct blk_buf *bb)
 {
     eChar c, c1;
-    struct Strbuf *wbuf = Strbuf_alloc();
+    struct Strbuf *wbuf;
     int dolflg;
     int    sofar = 0;
-    Char *str;
 
-    cleanup_push(wbuf, Strbuf_cleanup);
+    cleanup_push(wbuf = Strbuf_alloc(), Strbuf_cleanup);
     for (;;) {
 	c = DgetC(DODOL);
 	switch (c) {
@@ -299,10 +298,8 @@ Dword(struct blk_buf *bb)
     }
 
  end:
-    cleanup_ignore(wbuf);
     cleanup_until(wbuf);
-    str = Strbuf_finish(wbuf);
-    bb_append(bb, str);
+    bb_append(bb, wbuf->s);
     xfree(wbuf);
     return 1;
 }
