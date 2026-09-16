@@ -978,6 +978,7 @@ search(int type, int level, Char *goal)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
+	    freelex(ohistent);
 	    xfree(ohistent);
 	} else
 	    (void) getword(NULL);
@@ -993,7 +994,9 @@ histgetword(struct wordent *histent)
     eChar c, d;
     int e;
     struct Strbuf *tmp;
-    tmp = xalloc(ALLOC_STRBUF);
+    tmp = xmalloc(sizeof(*tmp));
+    tmp->size = 0;
+    tmp->s = NULL;
     c = readc(1);
     d = 0;
     e = 0;
@@ -1095,14 +1098,13 @@ past:
 static int
 getword(struct Strbuf *wp)
 {
-    int found = 0, first, e;
+    int found = 0, first;
     eChar c, d;
 
     if (wp)
 	wp->len = 0;
     c = readc(1);
     d = 0;
-    e = 0;
     do {
 	while (c == ' ' || c == '\t')
 	    c = readc(1);
@@ -1121,17 +1123,11 @@ getword(struct Strbuf *wp)
 	found = 1;
 	first = 1;
 	do {
-	    e = (c == '\\');
 	    c = readc(1);
-	    if (c == '\\' && !e) {
-		if ((c = readc(1)) == '\n') {
-		    e = 1;
-		    c = ' ';
-		} else {
-		    unreadc(c);
-		    c = '\\';
-		}
-	    }
+	    if (d && c == '\\')
+		unreadc(c);
+	    if (c == '\\' && (c = readc(1)) == '\n')
+		c = ' ';
 	    if (c == '\'' || c == '"') {
 		if (d == 0)
 		    d = c;
@@ -2862,7 +2858,7 @@ srchenc(struct CommandList *lp)
     return 0;
 }
 
-static struct StrbufList strtmp = { { { '\0' }, 0, 0 }, &strtmp, &strtmp };
+static struct StrbufList strtmp = { { NULL, 0, 0 }, &strtmp, &strtmp };
 static struct StrbufList *strptr = &strtmp;
 
 void
@@ -2957,6 +2953,7 @@ getwhole(struct Strbuf *line)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
+	    freelex(ohistent);
 	    xfree(ohistent);
 	}
 	cleanup_until(&buf);
@@ -2981,6 +2978,7 @@ getwhole(struct Strbuf *line)
 	ohistent->prev = histgetword(histent);
 	ohistent->prev->next = ohistent;
 	savehist(ohistent, 0);
+	freelex(ohistent);
 	xfree(ohistent);
     } else
 	(void) getword(NULL);
