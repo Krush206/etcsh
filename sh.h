@@ -1236,11 +1236,15 @@ extern char   **environ;
 #define ALLOC_LEX 0
 #define ALLOC_TREE 1
 #define ALLOC_STRBUF 2
+#define ALLOC_BLK2SHORT 3
+#define ALLOC_SHORT2BLK 4
 
 #define MEM_LEX 128
 #define MEM_TREE 128
 #define MEM_STRBUF 128
 #define MEM_STRLEN 1024
+#define MEM_BLK2SHORT 128
+#define MEM_SHORT2BLK 128
 
 #include "tc.h"
 
@@ -1341,9 +1345,12 @@ extern struct CommandList *dolptr;
  */
 struct Memory {
     union {
-	struct command tree;
-	struct wordent lex;
-	struct Strbuf str;
+	struct command treebuf;
+	struct wordent lexbuf;
+	struct Strbuf Strbuf;
+	struct strbuf strbuf;
+	Char *blk2short[MEM_BLK2SHORT];
+	char *short2blk[MEM_SHORT2BLK];
     } mem;
     int use;
     struct Memory *next;
@@ -1351,10 +1358,10 @@ struct Memory {
 };
 
 extern struct Memory (*lexmem)[];
-
 extern struct Memory (*treemem)[];
-
 extern struct Memory (*strmem)[];
+extern struct Memory (*s2bmem)[];
+extern struct Memory (*b2smem)[];
 
 #include "sh.decls.h"
 /*
