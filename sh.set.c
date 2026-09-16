@@ -980,20 +980,20 @@ shift(Char **v, struct command *c)
 static void
 exportpath(Char **val)
 {
-    struct Strbuf buf = Strbuf_INIT;
+    struct Strbuf *buf;
     Char    	*exppath;
 
+    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     if (val)
 	while (*val) {
-	    Strbuf_append(&buf, *val++);
+	    Strbuf_append(buf, *val++);
 	    if (*val == 0 || eq(*val, STRRparen))
 		break;
-	    Strbuf_append1(&buf, PATHSEP);
+	    Strbuf_append1(buf, PATHSEP);
 	}
-    exppath = Strbuf_finish(&buf);
-    cleanup_push(exppath, xfree);
-    tsetenv(STRKPATH, exppath);
-    cleanup_until(exppath);
+    Strbuf_terminate(buf);
+    tsetenv(STRKPATH, buf->s);
+    cleanup_until(buf->s);
 }
 
 static int
