@@ -35,6 +35,10 @@
 /*
  * sh.c
  */
+extern	void		 *xmalloc	(size_t);
+extern	void		 *xrealloc	(void *, size_t);
+extern	void		 *xcalloc	(size_t, size_t);
+extern	void		  xfree		(void *);
 extern	Char	 	 *gethdir	(const Char *);
 extern	void		  dosource	(Char **, struct command *);
 extern	void		  exitstat	(void) __attribute__((__noreturn__));
