@@ -689,7 +689,7 @@ setcopy(const Char *var, const Char *val, int flags)
 void
 setv(const Char *var, Char *val, int flags)
 {
-    Char **vec = xmalloc(2 * sizeof(Char **));
+    Char **vec = xalloc(ALLOC_SHORTBLK);
 
     vec[0] = val;
     vec[1] = 0;
