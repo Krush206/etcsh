@@ -202,22 +202,20 @@ short2blk(Char **src)
 Char   *
 str2short(const char *src)
 {
-    struct Strbuf *buf; /* = Strbuf_INIT; */
+    static struct Strbuf buf; /* = Strbuf_INIT; */
 
     if (src == NULL)
 	return (NULL);
 
-    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
-    buf->len = 0;
+    buf.len = 0;
     while (*src) {
 	Char wc;
 
 	src += one_mbtowc(&wc, src, MB_LEN_MAX);
-	Strbuf_append1(buf, wc);
+	Strbuf_append1(&buf, wc);
     }
-    Strbuf_terminate(buf);
-    cleanup_until(buf);
-    return buf->s;
+    Strbuf_terminate(&buf);
+    return buf.s;
 }
 
 char   *
@@ -457,7 +455,7 @@ s_strsave(const Char *s)
     if (s == NULL)
 	s = STRNULL;
     size = (Strlen(s) + 1) * sizeof(*n);
-    n = xalloc(ALLOC_SHORTSTR);
+    n = xmalloc(size);
     memcpy(n, s, size);
     return (n);
 }
@@ -632,18 +630,20 @@ bb_finish(struct blk_buf *bb)
 struct STRBUF *							\
 STRBUF##_alloc(void)						\
 {								\
-    struct STRBUF *buf;						\
-								\
-    buf = xalloc(ALLOC_STRBUF);					\
-    buf->len = 0;						\
-    return buf;							\
+    return xcalloc(1, sizeof(struct STRBUF));			\
 }								\
 								\
 static void							\
 STRBUF##_store1(struct STRBUF *buf, CHAR c)			\
 {								\
-    if (buf->len >= MEM_STRLEN)					\
-	stderror(ERR_NOMEM);					\
+    if (buf->size == buf->len) {				\
+	if (buf->size == 0)					\
+	    buf->size = 64; /* Arbitrary */			\
+	else							\
+	    buf->size *= 2;					\
+	buf->s = xrealloc(buf->s, buf->size * sizeof(*buf->s));	\
+    }								\
+    assert(buf->s);						\
     buf->s[buf->len] = c;					\
 }								\
 								\
@@ -651,7 +651,7 @@ STRBUF##_store1(struct STRBUF *buf, CHAR c)			\
 void								\
 STRBUF##_terminate(struct STRBUF *buf)				\
 {								\
-    STRBUF##_store1(buf, (Char) 0);				\
+    STRBUF##_store1(buf, '\0');					\
 }								\
 								\
 void								\
@@ -664,9 +664,14 @@ STRBUF##_append1(struct STRBUF *buf, CHAR c)			\
 void								\
 STRBUF##_appendn(struct STRBUF *buf, const CHAR *s, size_t len)	\
 {								\
-    if (buf->len + len >= MEM_STRLEN)				\
-	stderror(ERR_NOMEM);					\
-    (void) memcpy(buf->s + buf->len, s, len * sizeof *buf->s);	\
+    if (buf->size < buf->len + len) {				\
+	if (buf->size == 0)					\
+	    buf->size = 64; /* Arbitrary */			\
+	while (buf->size < buf->len + len)			\
+	    buf->size *= 2;					\
+	buf->s = xrealloc(buf->s, buf->size * sizeof(*buf->s));	\
+    }								\
+    memcpy(buf->s + buf->len, s, len * sizeof(*buf->s));	\
     buf->len += len;						\
 }								\
 								\
@@ -676,28 +681,27 @@ STRBUF##_append(struct STRBUF *buf, const CHAR *s)		\
     STRBUF##_appendn(buf, s, STRLEN(s));			\
 }								\
 								\
+CHAR *								\
+STRBUF##_finish(struct STRBUF *buf)				\
+{								\
+    STRBUF##_append1(buf, 0);					\
+    return xrealloc(buf->s, buf->len * sizeof(*buf->s));	\
+}								\
+								\
 void								\
 STRBUF##_cleanup(void *xbuf)					\
 {								\
     struct STRBUF *buf;						\
 								\
     buf = xbuf;							\
-    STRBUF##_free(buf);						\
+    xfree(buf->s);						\
 }								\
 								\
 void								\
-STRBUF##_free(struct STRBUF *buf)				\
+STRBUF##_free(void *xbuf)					\
 {								\
-    struct Memory *ptr;						\
-								\
-    for (ptr = (*strmem)->next;					\
-	 ptr != *strmem;					\
-	 ptr = ptr->next)					\
-	if (&ptr->mem.STRBUF == buf) {				\
-	    ptr->use = 0;					\
-	    return;						\
-	}							\
-    abort();							\
+    STRBUF##_cleanup(xbuf);					\
+    xfree(xbuf);						\
 }								\
 								\
 const struct STRBUF STRBUF##_init /* = STRBUF##_INIT; */
