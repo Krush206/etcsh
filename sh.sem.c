@@ -187,7 +187,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 
 	sCName = dollar(t->t_dcom[0]);
 	if (sCName != NULL && sCName[0] == '~') {
-	    struct Strbuf *buf;
+	    struct Strbuf buf = Strbuf_INIT;
 	    const Char *name_end;
 
 	    for (name_end = sCName + 1; *name_end != '\0' && *name_end != '/';
@@ -199,16 +199,16 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 		name = Strnsave(sCName + 1, name_end - (sCName + 1));
 		home = gethdir(name);
 		if (home != NULL) {
-		    Strbuf_append(buf, home);
+		    Strbuf_append(&buf, home);
 		    xfree(home);
 		} else
-		    Strbuf_append(buf, name);
+		    Strbuf_append(&buf, name);
 		xfree(name);
 	    } else
-		Strbuf_append(buf, varval(STRhome));
-	    Strbuf_append(buf, name_end);
+		Strbuf_append(&buf, varval(STRhome));
+	    Strbuf_append(&buf, name_end);
 	    xfree(sCName);
-	    sCName = buf->s;
+	    sCName = Strbuf_finish(&buf);
 	}
 
 	pathname = short2str(sCName);
