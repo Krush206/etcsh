@@ -490,17 +490,6 @@ typedef union {
 # define calloc		lint_calloc
 #endif
 
-#ifdef SYSMALLOC
-# define xmalloc(i)	smalloc(i)
-# define xrealloc(p, i)	srealloc(p, i)
-# define xcalloc(n, s)	scalloc(n, s)
-# define xfree		sfree
-#else
-# define xmalloc(i)  	malloc(i)
-# define xrealloc(p, i)	realloc(p, i)
-# define xcalloc(n, s)	calloc(n, s)
-# define xfree	 	free
-#endif /* SYSMALLOC */
 #include "sh.char.h"
 #include "sh.err.h"
 #include "sh.dir.h"
@@ -1233,6 +1222,9 @@ extern int	NoNLSRebind;
 extern char   **environ;
 #endif
 
+#define BUF_MAX 8192
+#define MEM_MAX 1024
+
 #include "tc.h"
 
 #ifndef WINNT_NATIVE
@@ -1298,6 +1290,45 @@ struct saved_state {
     int		  justpr;
 };
 
+/*
+ * One-line command parsing structure.
+ */
+struct CommandList {
+    struct command *t;
+    struct CommandList *next;
+    struct CommandList *prev;
+    struct CommandList *enc;
+    int type;
+    int ret;
+    Char *label;
+    Char *name;
+    Char **vec0;
+    Char **vec;
+    Char **sav;
+};
+
+struct StrbufList {
+    struct Strbuf buf;
+    struct StrbufList *next;
+    struct StrbufList *prev;
+};
+
+struct Memory {
+    int use;
+    void *alloc;
+    void *buf[BUF_MAX];
+    struct Memory *next;
+    struct Memory *prev;
+};
+
+extern struct CommandList fntmp;
+extern struct CommandList *fnptr;
+
+extern struct CommandList doltmp;
+extern struct CommandList *dolptr;
+
+extern struct Memory (*mem)[];
+
 #include "sh.decls.h"
 /*
  * Since on some machines characters are unsigned, and the signed
@@ -1338,34 +1369,5 @@ struct saved_state {
 
 #define TEXP_IGNORE 1	/* in ignore, it means to ignore value, just parse */
 #define TEXP_NOGLOB 2	/* in ignore, it means not to globone */
-
-/*
- * One-line command parsing structure.
- */
-struct CommandList {
-    struct command *t;
-    struct CommandList *next;
-    struct CommandList *prev;
-    struct CommandList *enc;
-    int type;
-    int ret;
-    Char *label;
-    Char *name;
-    Char **vec0;
-    Char **vec;
-    Char **sav;
-};
-
-struct StrbufList {
-    struct Strbuf buf;
-    struct StrbufList *next;
-    struct StrbufList *prev;
-};
-
-extern struct CommandList fntmp;
-extern struct CommandList *fnptr;
-
-extern struct CommandList doltmp;
-extern struct CommandList *dolptr;
 
 #endif /* _h_sh */
