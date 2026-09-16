@@ -170,7 +170,7 @@ lex(struct wordent *hp)
     do {
 	struct wordent *new;
 
-	new = xalloc(ALLOC_LEX);
+	new = xalloc(ALLOC_LEXBUF);
 	new->word = NULL;
 	new->prev = wdp;
 	new->next = hp;
