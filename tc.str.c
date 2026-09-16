@@ -207,6 +207,7 @@ str2short(const char *src)
     if (src == NULL)
 	return (NULL);
 
+    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     buf->len = 0;
     while (*src) {
 	Char wc;
@@ -215,6 +216,7 @@ str2short(const char *src)
 	Strbuf_append1(buf, wc);
     }
     Strbuf_terminate(buf);
+    cleanup_until(buf);
     return buf->s;
 }
 
@@ -455,7 +457,7 @@ s_strsave(const Char *s)
     if (s == NULL)
 	s = STRNULL;
     size = (Strlen(s) + 1) * sizeof(*n);
-    n = xmalloc(size);
+    n = xalloc(ALLOC_SHORTSTR);
     memcpy(n, s, size);
     return (n);
 }
@@ -630,7 +632,11 @@ bb_finish(struct blk_buf *bb)
 struct STRBUF *							\
 STRBUF##_alloc(void)						\
 {								\
-    return xalloc(ALLOC_STRBUF);				\
+    struct STRBUF *buf;						\
+								\
+    buf = xalloc(ALLOC_STRBUF);					\
+    buf->len = 0;						\
+    return buf;							\
 }								\
 								\
 static void							\
