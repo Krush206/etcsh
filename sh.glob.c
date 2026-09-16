@@ -790,6 +790,7 @@ backeval(struct blk_buf *bb, struct Strbuf *word, Char *cp, int literal)
 		seterr = NULL;
 	    }
 
+	    freelex(&paraml1);
 	    (void) lex(&paraml1);
 	    cleanup_push(&paraml1, lex_cleanup);
 	    if (seterr)
@@ -877,7 +878,7 @@ pword(struct blk_buf *bb, struct Strbuf *word)
 {
     Char *s;
 
-    Strbuf_terminate(word);
+    s = Strbuf_finish(word);
     bb_append(bb, s);
     *word = Strbuf_init;
 }
