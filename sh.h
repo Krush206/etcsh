@@ -1233,18 +1233,20 @@ extern int	NoNLSRebind;
 extern char   **environ;
 #endif
 
-#define ALLOC_LEX 0
-#define ALLOC_TREE 1
+#define ALLOC_LEXBUF 0
+#define ALLOC_TREEBUF 1
 #define ALLOC_STRBUF 2
-#define ALLOC_BLK2SHORT 3
-#define ALLOC_SHORT2BLK 4
+#define ALLOC_CHARBLK 3
+#define ALLOC_SHORTBLK 4
+#define ALLOC_SHORTSTR 5
 
-#define MEM_LEX 128
-#define MEM_TREE 128
+#define MEM_LEXBUF 128
+#define MEM_TREEBUF 128
 #define MEM_STRBUF 128
-#define MEM_STRLEN 1024
-#define MEM_BLK2SHORT 128
-#define MEM_SHORT2BLK 128
+#define MEM_STRLEN 4096
+#define MEM_CHARBLK 128
+#define MEM_SHORTBLK 128
+#define MEM_SHORTSTR 4096
 
 #include "tc.h"
 
@@ -1349,8 +1351,9 @@ struct Memory {
 	struct wordent lexbuf;
 	struct Strbuf Strbuf;
 	struct strbuf strbuf;
-	Char *blk2short[MEM_BLK2SHORT];
-	char *short2blk[MEM_SHORT2BLK];
+	char *cbbuf[MEM_CHARBLK];
+	Char *sbbuf[MEM_SHORTBLK];
+	Char ssbuf[MEM_SHORTSTR];
     } mem;
     int use;
     struct Memory *next;
@@ -1360,8 +1363,9 @@ struct Memory {
 extern struct Memory (*lexmem)[];
 extern struct Memory (*treemem)[];
 extern struct Memory (*strmem)[];
-extern struct Memory (*s2bmem)[];
-extern struct Memory (*b2smem)[];
+extern struct Memory (*cbmem)[];
+extern struct Memory (*sbmem)[];
+extern struct Memory (*ssmem)[];
 
 #include "sh.decls.h"
 /*
