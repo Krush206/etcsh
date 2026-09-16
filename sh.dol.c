@@ -206,7 +206,7 @@ Dword(struct blk_buf *bb)
     int    sofar = 0;
     Char *str;
 
-    cleanup_push(wbuf, Strbuf_free);
+    cleanup_push(wbuf, Strbuf_cleanup);
     for (;;) {
 	c = DgetC(DODOL);
 	switch (c) {
@@ -379,7 +379,7 @@ Dgetdol(void)
     int    dimen = 0, bitset = 0, length = 0;
     static Char *dolbang = NULL;
 
-    cleanup_push(name, Strbuf_free);
+    cleanup_push(name, Strbuf_cleanup);
     dolmod.len = ndolflags = 0;
     c = sc = DgetC(0);
     if (c == DEOF) {
@@ -390,7 +390,7 @@ Dgetdol(void)
 	const Char *cp;
 	struct Strbuf *expanded = Strbuf_alloc();
 
-	cleanup_push(expanded, Strbuf_free);
+	cleanup_push(expanded, Strbuf_cleanup);
 	for (;;) {
 	    c = DgetC(0);
 	    if ((c & TRIM) == '\'')
@@ -654,7 +654,7 @@ Dgetdol(void)
     upb = blklen(vp->vec);
     if (dimen == 0 && subscr == 0 && c == '[') {
 	name = Strbuf_alloc();
-	cleanup_push(name, Strbuf_free);
+	cleanup_push(name, Strbuf_cleanup);
 	np = name->s;
 	for (;;) {
 	    c = DgetC(DODOL);	/* Allow $ expand within [ ] */
@@ -1024,7 +1024,7 @@ heredoc(Char *term)
 {
     eChar  c;
     Char   *Dv[2];
-    struct Strbuf lbuf = Strbuf_INIT, mbuf = Strbuf_INIT;
+    struct Strbuf *lbuf, *mbuf;
     Char    obuf[BUFSIZE + 1];
 #define OBUF_END (obuf + sizeof(obuf) / sizeof (*obuf) - 1)
     Char *lbp, *obp, *mbp;
@@ -1086,41 +1086,41 @@ again:
 #ifdef WINNT_NATIVE
     __dup_stdin = 1;
 #endif /* WINNT_NATIVE */
-    cleanup_push(&lbuf, Strbuf_cleanup);
-    cleanup_push(&mbuf, Strbuf_cleanup);
+    cleanup_push(lbuf = Strbuf_alloc(), Strbuf_cleanup);
+    cleanup_push(mbuf = Strbuf_alloc(), Strbuf_cleanup);
     for (;;) {
 	Char **words;
 
 	/*
 	 * Read up a line
 	 */
-	lbuf.len = 0;
+	lbuf->len = 0;
 	for (;;) {
 	    c = readc(1);	/* 1 -> Want EOF returns */
 	    if (c == CHAR_ERR || c == '\n')
 		break;
 	    if ((c &= TRIM) != 0)
-		Strbuf_append1(&lbuf, (Char) c);
+		Strbuf_append1(lbuf, (Char) c);
 	}
-	Strbuf_terminate(&lbuf);
+	Strbuf_terminate(lbuf);
 
 	/* Catch EOF in the middle of a line. */
-	if (c == CHAR_ERR && lbuf.len != 0)
+	if (c == CHAR_ERR && lbuf->len != 0)
 	    c = '\n';
 
 	/*
 	 * Check for EOF or compare to terminator -- before expansion
 	 */
-	if (c == CHAR_ERR || eq(lbuf.s, term))
+	if (c == CHAR_ERR || eq(lbuf->s, term))
 	    break;
 
 	/*
 	 * If term was quoted or -n just pass it on
 	 */
 	if (quoted || noexec) {
-	    Strbuf_append1(&lbuf, '\n');
-	    Strbuf_terminate(&lbuf);
-	    for (lbp = lbuf.s; (c = *lbp++) != 0;) {
+	    Strbuf_append1(lbuf, '\n');
+	    Strbuf_terminate(lbuf);
+	    for (lbp = lbuf->s; (c = *lbp++) != 0;) {
 		*obp++ = (Char) c;
 		if (obp == OBUF_END) {
 		    tmp = short2str(obuf);
@@ -1135,9 +1135,9 @@ again:
 	 * Term wasn't quoted so variable and then command expand the input
 	 * line
 	 */
-	Dcp = lbuf.s;
+	Dcp = lbuf->s;
 	Dvp = Dv + 1;
-	mbuf.len = 0;
+	mbuf->len = 0;
 	for (;;) {
 	    c = DgetC(DODOL);
 	    if (c == DEOF)
@@ -1152,14 +1152,14 @@ again:
 		else
 		    c |= QUOTE;
 	    }
-	    Strbuf_append1(&mbuf, (Char) c);
+	    Strbuf_append1(mbuf, (Char) c);
 	}
-	Strbuf_terminate(&mbuf);
+	Strbuf_terminate(mbuf);
 
 	/*
 	 * If any ` in line do command substitution
 	 */
-	mbp = mbuf.s;
+	mbp = mbuf->s;
 	if (Strchr(mbp, '`') != NULL) {
 	    /*
 	     * 1 arg to dobackp causes substitution to be literal. Words are
