@@ -48,21 +48,21 @@ extern size_t tlength;
 #define FMT_SCHED	3
 
 struct strbuf {
-    char s[MEM_STRLEN];
+    char *s;
     size_t len;			/* Valid characters */
     size_t size;		/* Allocated characters */
 };
 
 struct Strbuf {
-    Char s[MEM_STRLEN];
+    Char *s;
     size_t len;			/* Valid characters */
     size_t size;		/* Allocated characters */
 };
 
 /* We don't have explicit initializers for variables with static storage
    duration, so these values should be equivalent to default initialization. */
-#define strbuf_INIT { { '\0' }, 0, 0 }
-#define Strbuf_INIT { { '\0' }, 0, 0 }
+#define strbuf_INIT { NULL, 0, 0 }
+#define Strbuf_INIT { NULL, 0, 0 }
 extern const struct strbuf strbuf_init;
 extern const struct Strbuf Strbuf_init;
 
