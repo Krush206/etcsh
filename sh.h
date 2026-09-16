@@ -1233,23 +1233,6 @@ extern int	NoNLSRebind;
 extern char   **environ;
 #endif
 
-#define ALLOC_LEXBUF 0
-#define ALLOC_TREEBUF 1
-#define ALLOC_STRBUF 2
-#define ALLOC_CHARBLK 3
-#define ALLOC_SHORTBLK 4
-#define ALLOC_SHORTSTR 5
-#define ALLOC_CHARSTR 6
-
-#define MEM_LEXBUF 128
-#define MEM_TREEBUF 128
-#define MEM_STRBUF 128
-#define MEM_STRLEN 4096
-#define MEM_CHARBLK 128
-#define MEM_SHORTBLK 128
-#define MEM_CHARSTR 4096
-#define MEM_SHORTSTR 4096
-
 #include "tc.h"
 
 #ifndef WINNT_NATIVE
@@ -1315,62 +1298,6 @@ struct saved_state {
     int		  justpr;
 };
 
-/*
- * One-line command parsing structure.
- */
-struct CommandList {
-    struct command *t;
-    struct CommandList *next;
-    struct CommandList *prev;
-    struct CommandList *enc;
-    int type;
-    int ret;
-    Char *label;
-    Char *name;
-    Char **vec0;
-    Char **vec;
-    Char **sav;
-};
-
-struct StrbufList {
-    struct Strbuf buf;
-    struct StrbufList *next;
-    struct StrbufList *prev;
-};
-
-extern struct CommandList fntmp;
-extern struct CommandList *fnptr;
-
-extern struct CommandList doltmp;
-extern struct CommandList *dolptr;
-
-/*
- * Static buffer allocation structure.
- */
-struct Memory {
-    union {
-	struct command treebuf;
-	struct wordent lexbuf;
-	struct Strbuf Strbuf;
-	struct strbuf strbuf;
-	char *cbbuf[MEM_CHARBLK];
-	char csbuf[MEM_CHARSTR];
-	Char *sbbuf[MEM_SHORTBLK];
-	Char ssbuf[MEM_SHORTSTR];
-    } mem;
-    int use;
-    struct Memory *next;
-    struct Memory *prev;
-};
-
-extern struct Memory (*lexmem)[];
-extern struct Memory (*treemem)[];
-extern struct Memory (*strmem)[];
-extern struct Memory (*cbmem)[];
-extern struct Memory (*sbmem)[];
-extern struct Memory (*ssmem)[];
-extern struct Memory (*csmem)[];
-
 #include "sh.decls.h"
 /*
  * Since on some machines characters are unsigned, and the signed
@@ -1411,5 +1338,34 @@ extern struct Memory (*csmem)[];
 
 #define TEXP_IGNORE 1	/* in ignore, it means to ignore value, just parse */
 #define TEXP_NOGLOB 2	/* in ignore, it means not to globone */
+
+/*
+ * One-line command parsing structure.
+ */
+struct CommandList {
+    struct command *t;
+    struct CommandList *next;
+    struct CommandList *prev;
+    struct CommandList *enc;
+    int type;
+    int ret;
+    Char *label;
+    Char *name;
+    Char **vec0;
+    Char **vec;
+    Char **sav;
+};
+
+struct StrbufList {
+    struct Strbuf buf;
+    struct StrbufList *next;
+    struct StrbufList *prev;
+};
+
+extern struct CommandList fntmp;
+extern struct CommandList *fnptr;
+
+extern struct CommandList doltmp;
+extern struct CommandList *dolptr;
 
 #endif /* _h_sh */
