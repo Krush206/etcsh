@@ -75,14 +75,6 @@ extern int NLSMapsAreInited;
  * ported to Apple Unix (TM) (OREO)  26 -- 29 Jun 1987
  */
 
-struct Memory (*lexmem)[MEM_LEXBUF];
-struct Memory (*treemem)[MEM_TREEBUF];
-struct Memory (*strmem)[MEM_STRBUF];
-struct Memory (*sbmem)[MEM_SHORTBLK];
-struct Memory (*cbmem)[MEM_CHARBLK];
-struct Memory (*ssmem)[MEM_SHORTSTR];
-struct Memory (*csmem)[MEM_CHARSTR];
-
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
 
@@ -120,14 +112,6 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
-static	char		 *csalloc	(void);
-static	Char		 *ssalloc	(void);
-static	Char		**sballoc	(void);
-static	char		**cballoc	(void);
-static	struct command	 *treealloc	(void);
-static	struct Strbuf	 *stralloc	(void);
-static	struct wordent	 *lexalloc	(void);
-static	void		  xballoc	(void);
 static	int		  srccat	(Char *, Char *);
 #ifndef WINNT_NATIVE
 static	int		  srcfile	(const char *, int, int, Char **);
@@ -238,7 +222,6 @@ main(int argc, char **argv)
     nt_init();
 #endif /* WINNT_NATIVE */
 
-    xballoc();
     (void)memset(&reslab, 0, sizeof(reslab));
 #if defined(NLS_CATALOGS) && defined(LC_MESSAGES)
     (void) setlocale(LC_MESSAGES, "");
@@ -258,7 +241,7 @@ main(int argc, char **argv)
 #endif
 
     nlsinit();
-    initlex(&(*lexmem)->mem.lexbuf);
+    initlex(&paraml);
 
 #ifdef MALLOC_TRACE
     mal_setstatsfile(fdopen(dmove(xopen("/tmp/tcsh.trace",
@@ -2054,11 +2037,11 @@ process(int catch)
 	 */
 	if (setintr)
 	    pintr_push_enable(&old_pintr_disabled);
-	freelex();
-	hadhist = lex(&(*lexmem)->mem.lexbuf);
+	freelex(&paraml);
+	hadhist = lex(&paraml);
 	if (setintr)
 	    cleanup_until(&old_pintr_disabled);
-	cleanup_push(*lexmem, lex_cleanup);
+	cleanup_push(&paraml, lex_cleanup);
 
 	/*
 	 * Echo not only on VERBOSE, but also with history expansion. If there
@@ -2071,7 +2054,7 @@ process(int catch)
 	    int odidfds = didfds;
 	    haderr = 1;
 	    didfds = 0;
-	    prlex(&(*lexmem)->mem.lexbuf);
+	    prlex(&paraml);
 	    flush();
 	    haderr = 0;
 	    didfds = odidfds;
@@ -2087,7 +2070,7 @@ process(int catch)
 	 * elsewhere...
 	 */
 	if (enterhist || (catch && intty && !whyles && !tellwhat && !arun))
-	    savehist(&(*lexmem)->mem.lexbuf, enterhist > 1);
+	    savehist(&paraml, enterhist > 1);
 
 	if (Expand && seterr)
 	    Expand = 0;
@@ -2109,35 +2092,35 @@ process(int catch)
 	 * If had a tellwhat from twenex() then do
 	 */
 	if (tellwhat) {
-	    (void) tellmewhat(&(*lexmem)->mem.lexbuf, NULL);
+	    (void) tellmewhat(&paraml, NULL);
 	    goto cmd_done;
 	}
 
-	alias(&(*lexmem)->mem.lexbuf);
+	alias(&paraml);
 
 #ifdef BSDJOBS
 	/*
 	 * If we are interactive, try to continue jobs that we have stopped
 	 */
 	if (prompt)
-	    continue_jobs(&(*lexmem)->mem.lexbuf);
+	    continue_jobs(&paraml);
 #endif				/* BSDJOBS */
 
 	/*
 	 * Check to see if the user typed "rm * .o" or something
 	 */
 	if (prompt)
-	    rmstar(&(*lexmem)->mem.lexbuf);
+	    rmstar(&paraml);
 	/*
 	 * Parse the words of the input into a parse tree.
 	 */
-	t = syntax((*lexmem)->mem.lexbuf.next, &(*lexmem)->mem.lexbuf, 0);
+	t = syntax(paraml.next, &paraml, 0);
 	/*
 	 * We cannot cleanup push here, because cd /blah; echo foo
 	 * would rewind t on the chdir error, and free the rest of the command
 	 */
 	if (seterr) {
-	    freesyn();
+	    freesyn(t);
 	    stderror(ERR_OLD);
 	}
 
@@ -2147,7 +2130,7 @@ process(int catch)
 	 * <mlschroe@immd4.informatik.uni-erlangen.de> was execute(t, tpgrp);
 	 */
 	execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
-	freesyn();
+	freesyn(t);
 
 	/*
 	 * Made it!
@@ -2160,7 +2143,7 @@ process(int catch)
 	setcopy(STR_, InputBuf, VAR_READWRITE | VAR_NOGLOB);
     cmd_done:
 	if (cleanup_reset())
-	    cleanup_until(*lexmem);
+	    cleanup_until(&paraml);
 	else
 	    haderr = 1;
     }
@@ -2546,211 +2529,4 @@ grabpgrp(int fd, pid_t desired)
     }
     errno = EPERM;
     return -1;
-}
-
-static void
-xballoc(void)
-{
-    struct Memory *past;
-    struct Memory *new;
-    struct Memory *ptr;
-
-    lexmem = xmalloc(sizeof *lexmem);
-    past = *lexmem;
-    ptr = *lexmem;
-    while (++ptr != &(*lexmem)[MEM_LEXBUF]) {
-	new = ptr;
-	new->use = 0;
-	new->next = *lexmem;
-	new->prev = past;
-	past->next = new;
-	past = new;
-    }
-    csmem = xmalloc(sizeof *csmem);
-    past = *csmem;
-    ptr = *csmem;
-    while (++ptr != &(*csmem)[MEM_CHARSTR]) {
-	new = ptr;
-	new->use = 0;
-	new->next = *csmem;
-	new->prev = past;
-	past->next = new;
-	past = new;
-    }
-    treemem = xmalloc(sizeof *treemem);
-    past = *treemem;
-    ptr = *treemem;
-    while (++ptr != &(*treemem)[MEM_TREEBUF]) {
-	new = ptr;
-	new->use = 0;
-	new->next = *treemem;
-	new->prev = past;
-	past->next = new;
-	past = new;
-    }
-    strmem = xmalloc(sizeof *strmem);
-    past = *strmem;
-    ptr = *strmem;
-    while (++ptr != &(*strmem)[MEM_STRBUF]) {
-	new = ptr;
-	new->use = 0;
-	new->next = *strmem;
-	new->prev = past;
-	past->next = new;
-	past = new;
-    }
-    sbmem = xmalloc(sizeof *sbmem);
-    past = *sbmem;
-    ptr = *sbmem;
-    while (++ptr != &(*sbmem)[MEM_SHORTBLK]) {
-	new = ptr;
-	new->use = 0;
-	new->next = *sbmem;
-	new->prev = past;
-	past->next = new;
-	past = new;
-    }
-    cbmem = xmalloc(sizeof *cbmem);
-    past = *cbmem;
-    ptr = *cbmem;
-    while (++ptr != &(*cbmem)[MEM_CHARBLK]) {
-	new = ptr;
-	new->use = 0;
-	new->next = *cbmem;
-	new->prev = past;
-	past->next = new;
-	past = new;
-    }
-    ssmem = xmalloc(sizeof *ssmem);
-    past = *ssmem;
-    ptr = *ssmem;
-    while (++ptr != &(*ssmem)[MEM_SHORTSTR]) {
-	new = ptr;
-	new->use = 0;
-	new->next = *ssmem;
-	new->prev = past;
-	past->next = new;
-	past = new;
-    }
-}
-
-void *
-xalloc(int type)
-{
-    switch (type) {
-    case ALLOC_LEXBUF:
-	return lexalloc();
-    case ALLOC_TREEBUF:
-	return treealloc();
-    case ALLOC_STRBUF:
-	return stralloc();
-    case ALLOC_CHARBLK:
-	return cballoc();
-    case ALLOC_SHORTBLK:
-	return sballoc();
-    case ALLOC_SHORTSTR:
-	return ssalloc();
-    case ALLOC_CHARSTR:
-	return csalloc();
-    }
-    stderror(ERR_SILENT);
-    return NULL;
-}
-
-static struct wordent *
-lexalloc(void)
-{
-    struct Memory *ptr;
-
-    for (ptr = (*lexmem)->next; ptr != *lexmem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    return &ptr->mem.lexbuf;
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
-static struct command *
-treealloc(void)
-{
-    struct Memory *ptr;
-
-    for (ptr = (*treemem)->next; ptr != *treemem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    return &ptr->mem.treebuf;
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
-static Char **
-sballoc(void)
-{
-    struct Memory *ptr;
-
-    for (ptr = (*sbmem)->next; ptr != *sbmem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    return ptr->mem.sbbuf;
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
-static char **
-cballoc(void)
-{
-    struct Memory *ptr;
-
-    for (ptr = (*cbmem)->next; ptr != *cbmem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    return ptr->mem.cbbuf;
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
-static Char *
-ssalloc(void)
-{
-    struct Memory *ptr;
-
-    for (ptr = (*ssmem)->next; ptr != *ssmem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    return ptr->mem.ssbuf;
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
-static char *
-csalloc(void)
-{
-    struct Memory *ptr;
-
-    for (ptr = (*csmem)->next; ptr != *csmem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    return ptr->mem.csbuf;
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
-static struct Strbuf *
-stralloc(void)
-{
-    struct Memory *ptr;
-
-    for (ptr = (*strmem)->next; ptr != *strmem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    return &ptr->mem.Strbuf;
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
 }
