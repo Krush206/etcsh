@@ -1314,6 +1314,7 @@ struct StrbufList {
 };
 
 struct Memory {
+    size_t size;
     int use;
     void *alloc;
     void *buf[BUF_MAX];
