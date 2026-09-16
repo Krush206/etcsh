@@ -75,11 +75,12 @@ extern int NLSMapsAreInited;
  * ported to Apple Unix (TM) (OREO)  26 -- 29 Jun 1987
  */
 
-struct Memory (*lexmem)[MEM_LEX];
-struct Memory (*treemem)[MEM_TREE];
+struct Memory (*lexmem)[MEM_LEXBUF];
+struct Memory (*treemem)[MEM_TREEBUF];
 struct Memory (*strmem)[MEM_STRBUF];
-struct Memory (*b2smem)[MEM_BLK2SHORT];
-struct Memory (*s2bmem)[MEM_SHORT2BLK];
+struct Memory (*sbmem)[MEM_SHORTBLK];
+struct Memory (*cbmem)[MEM_CHARBLK];
+struct Memory (*ssmem)[MEM_SHORTSTR];
 
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
@@ -118,8 +119,9 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
-static	Char		**b2salloc	(void);
-static	char		**s2balloc	(void);
+static	Char		 *ssalloc	(void);
+static	Char		**sballoc	(void);
+static	char		**cballoc	(void);
 static	struct command	 *treealloc	(void);
 static	struct Strbuf	 *stralloc	(void);
 static	struct wordent	 *lexalloc	(void);
@@ -2554,7 +2556,7 @@ xballoc(void)
     lexmem = xmalloc(sizeof *lexmem);
     past = *lexmem;
     ptr = *lexmem;
-    while (++ptr != &(*lexmem)[MEM_LEX]) {
+    while (++ptr != &(*lexmem)[MEM_LEXBUF]) {
 	new = ptr;
 	new->use = 0;
 	new->next = *lexmem;
@@ -2565,7 +2567,7 @@ xballoc(void)
     treemem = xmalloc(sizeof *treemem);
     past = *treemem;
     ptr = *treemem;
-    while (++ptr != &(*treemem)[MEM_TREE]) {
+    while (++ptr != &(*treemem)[MEM_TREEBUF]) {
 	new = ptr;
 	new->use = 0;
 	new->next = *treemem;
@@ -2584,24 +2586,35 @@ xballoc(void)
 	past->next = new;
 	past = new;
     }
-    b2smem = xmalloc(sizeof *b2smem);
-    past = *b2smem;
-    ptr = *b2smem;
-    while (++ptr != &(*b2smem)[MEM_STRBUF]) {
+    sbmem = xmalloc(sizeof *sbmem);
+    past = *sbmem;
+    ptr = *sbmem;
+    while (++ptr != &(*sbmem)[MEM_SHORTBLK]) {
 	new = ptr;
 	new->use = 0;
-	new->next = *b2smem;
+	new->next = *sbmem;
 	new->prev = past;
 	past->next = new;
 	past = new;
     }
-    s2bmem = xmalloc(sizeof *s2bmem);
-    past = *s2bmem;
-    ptr = *s2bmem;
-    while (++ptr != &(*s2bmem)[MEM_STRBUF]) {
+    cbmem = xmalloc(sizeof *cbmem);
+    past = *cbmem;
+    ptr = *cbmem;
+    while (++ptr != &(*cbmem)[MEM_CHARBLK]) {
 	new = ptr;
 	new->use = 0;
-	new->next = *s2bmem;
+	new->next = *cbmem;
+	new->prev = past;
+	past->next = new;
+	past = new;
+    }
+    ssmem = xmalloc(sizeof *ssmem);
+    past = *ssmem;
+    ptr = *ssmem;
+    while (++ptr != &(*ssmem)[MEM_SHORTSTR]) {
+	new = ptr;
+	new->use = 0;
+	new->next = *ssmem;
 	new->prev = past;
 	past->next = new;
 	past = new;
@@ -2612,16 +2625,18 @@ void *
 xalloc(int type)
 {
     switch (type) {
-    case ALLOC_LEX:
+    case ALLOC_LEXBUF:
 	return lexalloc();
-    case ALLOC_TREE:
+    case ALLOC_TREEBUF:
 	return treealloc();
     case ALLOC_STRBUF:
 	return stralloc();
-    case ALLOC_SHORT2BLK:
-	return s2balloc();
-    case ALLOC_BLK2SHORT:
-	return b2salloc();
+    case ALLOC_CHARBLK:
+	return cballoc();
+    case ALLOC_SHORTBLK:
+	return sballoc();
+    case ALLOC_SHORTSTR:
+	return ssalloc();
     }
     stderror(ERR_SILENT);
     return NULL;
@@ -2656,28 +2671,42 @@ treealloc(void)
 }
 
 static Char **
-b2salloc(void)
+sballoc(void)
 {
     struct Memory *ptr;
 
-    for (ptr = (*b2smem)->next; ptr != *b2smem; ptr = ptr->next)
+    for (ptr = (*sbmem)->next; ptr != *sbmem; ptr = ptr->next)
 	if (!ptr->use) {
 	    ptr->use = 1;
-	    return ptr->mem.blk2short;
+	    return ptr->mem.sbbuf;
 	}
     stderror(ERR_NOMEM);
     return NULL;
 }
 
 static char **
-s2balloc(void)
+cballoc(void)
 {
     struct Memory *ptr;
 
-    for (ptr = (*s2bmem)->next; ptr != *s2bmem; ptr = ptr->next)
+    for (ptr = (*cbmem)->next; ptr != *cbmem; ptr = ptr->next)
 	if (!ptr->use) {
 	    ptr->use = 1;
-	    return ptr->mem.short2blk;
+	    return ptr->mem.cbbuf;
+	}
+    stderror(ERR_NOMEM);
+    return NULL;
+}
+
+static Char *
+ssalloc(void)
+{
+    struct Memory *ptr;
+
+    for (ptr = (*ssmem)->next; ptr != *ssmem; ptr = ptr->next)
+	if (!ptr->use) {
+	    ptr->use = 1;
+	    return ptr->mem.ssbuf;
 	}
     stderror(ERR_NOMEM);
     return NULL;
