@@ -35,7 +35,6 @@
 /*
  * sh.c
  */
-extern	void		 *xalloc	(int);
 extern	Char	 	 *gethdir	(const Char *);
 extern	void		  dosource	(Char **, struct command *);
 extern	void		  exitstat	(void) __attribute__((__noreturn__));
@@ -248,7 +247,7 @@ extern	void		  btoeof	(void);
 extern	void		  copylex	(struct wordent *, struct wordent *);
 extern	Char		 *domod		(Char *, Char);
 extern	void		  initlex	(struct wordent *);
-extern	void		  freelex	(void);
+extern	void		  freelex	(struct wordent *);
 extern	int		  lex		(struct wordent *);
 extern	void		  lex_cleanup	(void *);
 extern	void		  prlex		(struct wordent *);
@@ -316,7 +315,7 @@ extern	void		  blkcmp_cleanup(void *);
  * sh.parse.c
  */
 extern	void		  alias		(struct wordent *);
-extern	void		  freesyn	(void);
+extern	void		  freesyn	(struct command *);
 extern struct command 	 *syntax	(const struct wordent *,
 					 const struct wordent *, int);
 extern	void		  syntax_cleanup(void *);
