@@ -877,7 +877,7 @@ pword(struct blk_buf *bb, struct Strbuf *word)
 {
     Char *s;
 
-    s = Strbuf_finish(word);
+    Strbuf_terminate(word);
     bb_append(bb, s);
     *word = Strbuf_init;
 }
