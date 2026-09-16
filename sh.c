@@ -81,6 +81,7 @@ struct Memory (*strmem)[MEM_STRBUF];
 struct Memory (*sbmem)[MEM_SHORTBLK];
 struct Memory (*cbmem)[MEM_CHARBLK];
 struct Memory (*ssmem)[MEM_SHORTSTR];
+struct Memory (*csmem)[MEM_CHARSTR];
 
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
@@ -119,6 +120,7 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
+static	char		 *csalloc	(void);
 static	Char		 *ssalloc	(void);
 static	Char		**sballoc	(void);
 static	char		**cballoc	(void);
@@ -2564,6 +2566,17 @@ xballoc(void)
 	past->next = new;
 	past = new;
     }
+    csmem = xmalloc(sizeof *csmem);
+    past = *csmem;
+    ptr = *csmem;
+    while (++ptr != &(*csmem)[MEM_CHARSTR]) {
+	new = ptr;
+	new->use = 0;
+	new->next = *csmem;
+	new->prev = past;
+	past->next = new;
+	past = new;
+    }
     treemem = xmalloc(sizeof *treemem);
     past = *treemem;
     ptr = *treemem;
@@ -2637,6 +2650,8 @@ xalloc(int type)
 	return sballoc();
     case ALLOC_SHORTSTR:
 	return ssalloc();
+    case ALLOC_CHARSTR:
+	return csalloc();
     }
     stderror(ERR_SILENT);
     return NULL;
@@ -2707,6 +2722,20 @@ ssalloc(void)
 	if (!ptr->use) {
 	    ptr->use = 1;
 	    return ptr->mem.ssbuf;
+	}
+    stderror(ERR_NOMEM);
+    return NULL;
+}
+
+static char *
+csalloc(void)
+{
+    struct Memory *ptr;
+
+    for (ptr = (*csmem)->next; ptr != *csmem; ptr = ptr->next)
+	if (!ptr->use) {
+	    ptr->use = 1;
+	    return ptr->mem.csbuf;
 	}
     stderror(ERR_NOMEM);
     return NULL;
