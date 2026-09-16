@@ -350,7 +350,7 @@ doset(Char **v, struct command *c)
 		while (wide_read(0, &c, (size_t) 1, 0) > 0)
 		    Strbuf_append1(&buf, c);
 		Strbuf_terminate(&buf);
-		copy = quote(Strsave(buf.s));
+		copy = Strsave(buf.s);
 		cleanup_until(&buf);
 	    } else
 		copy = Strsave(p);
@@ -381,7 +381,7 @@ doset(Char **v, struct command *c)
 		}
 		else {
 		    Strbuf_terminate(&buf);
-		    setv(vp, quote(Strsave(buf.s)), flags);
+		    setv(vp, Strsave(buf.s), flags);
 		}
 		cleanup_until(&buf);
 	    } else
@@ -689,7 +689,7 @@ setcopy(const Char *var, const Char *val, int flags)
 void
 setv(const Char *var, Char *val, int flags)
 {
-    Char **vec = xalloc(ALLOC_SHORTBLK);
+    Char **vec = xmalloc(2 * sizeof(Char **));
 
     vec[0] = val;
     vec[1] = 0;
@@ -980,20 +980,20 @@ shift(Char **v, struct command *c)
 static void
 exportpath(Char **val)
 {
-    struct Strbuf *buf;
+    struct Strbuf buf = Strbuf_INIT;
     Char    	*exppath;
 
-    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     if (val)
 	while (*val) {
-	    Strbuf_append(buf, *val++);
+	    Strbuf_append(&buf, *val++);
 	    if (*val == 0 || eq(*val, STRRparen))
 		break;
-	    Strbuf_append1(buf, PATHSEP);
+	    Strbuf_append1(&buf, PATHSEP);
 	}
-    Strbuf_terminate(buf);
-    tsetenv(STRKPATH, buf->s);
-    cleanup_until(buf->s);
+    exppath = Strbuf_finish(&buf);
+    cleanup_push(exppath, xfree);
+    tsetenv(STRKPATH, exppath);
+    cleanup_until(exppath);
 }
 
 static int
