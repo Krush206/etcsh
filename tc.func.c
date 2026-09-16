@@ -94,7 +94,7 @@ static	void	 getremotehost	(int);
 Char   *
 expand_lex(const struct wordent *sp0, int from, int to)
 {
-    struct Strbuf *buf;
+    struct Strbuf buf = Strbuf_INIT;
     const struct wordent *sp;
     Char *s;
     Char prev_c;
@@ -102,9 +102,8 @@ expand_lex(const struct wordent *sp0, int from, int to)
 
     prev_c = '\0';
 
-    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     if (!sp0 || (sp = sp0->next) == sp0 || sp == (sp0 = sp0->prev))
-	return buf->s; /* null lex */
+	return Strbuf_finish(&buf); /* null lex */
 
     for (i = 0; ; i++) {
 	if ((i >= from) && (i <= to)) {	/* if in range */
@@ -116,7 +115,7 @@ expand_lex(const struct wordent *sp0, int from, int to)
 		 */
 		if (*s & QUOTE) {
 		    if ((*s & TRIM) == HIST && HIST != '\0')
-			Strbuf_append1(buf, '\\');
+			Strbuf_append1(&buf, '\\');
 		    else
 			switch (*s & TRIM) {
 			case '\'':
@@ -129,36 +128,35 @@ expand_lex(const struct wordent *sp0, int from, int to)
 				dolsq++;
 				break;
 			    }
-			    Strbuf_append1(buf, '\\');
+			    Strbuf_append1(&buf, '\\');
 			    break;
 			case '\"':
 			    if (prev_c == '\\') break;
 			    if (dolsq) break;
-			    Strbuf_append1(buf, '\\');
+			    Strbuf_append1(&buf, '\\');
 			    break;
 			}
 		}
 #if INVALID_BYTE != 0
 		if ((*s & INVALID_BYTE) != INVALID_BYTE) /* *s < INVALID_BYTE */
-		    Strbuf_append1(buf, *s & TRIM);
+		    Strbuf_append1(&buf, *s & TRIM);
 		else
-		    Strbuf_append1(buf, *s);
+		    Strbuf_append1(&buf, *s);
 #else
-		Strbuf_append1(buf, *s & TRIM);
+		Strbuf_append1(&buf, *s & TRIM);
 #endif
 		prev_c = *s;
 	    }
-	    Strbuf_append1(buf, ' ');
+	    Strbuf_append1(&buf, ' ');
 	}
 	sp = sp->next;
 	if (sp == sp0)
 	    break;
     }
-    if (buf->len != 0)
-	buf->len--;		/* get rid of trailing space */
+    if (buf.len != 0)
+	buf.len--;		/* get rid of trailing space */
 
-    cleanup_until(buf);
-    return buf->s;
+    return Strbuf_finish(&buf);
 }
 
 Char   *
@@ -338,9 +336,9 @@ dolist(Char **v, struct command *c)
     }
     else {
 	Char   *dp, *tmp;
-	struct Strbuf *buf;
+	struct Strbuf buf = Strbuf_INIT;
 
-	cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
+	cleanup_push(&buf, Strbuf_cleanup);
 	for (k = 0, i = 0; v[k] != NULL; k++) {
 	    tmp = dnormalize(v[k], symlinks == SYM_IGNORE);
 	    cleanup_push(tmp, xfree);
@@ -376,26 +374,26 @@ dolist(Char **v, struct command *c)
 		if (k != 0 && v[1] != NULL)
 		    xputchar('\n');
 		xprintf("%" TCSH_S ":\n", tmp);
-		buf->len = 0;
+		buf.len = 0;
 		for (cp = tmp; *cp; cp++)
-		    Strbuf_append1(buf, (*cp | QUOTE));
-		Strbuf_terminate(buf);
-		dp = &buf->s[buf->len - 1];
+		    Strbuf_append1(&buf, (*cp | QUOTE));
+		Strbuf_terminate(&buf);
+		dp = &buf.s[buf.len - 1];
 		if (
 #ifdef WINNT_NATIVE
 		    (*dp != (Char) (':' | QUOTE)) &&
 #endif /* WINNT_NATIVE */
 		    (*dp != (Char) ('/' | QUOTE))) {
-		    Strbuf_append1(buf, '/');
-		    Strbuf_terminate(buf);
+		    Strbuf_append1(&buf, '/');
+		    Strbuf_terminate(&buf);
 		} else
 		    *dp &= TRIM;
-		(void) t_search(buf, LIST, TW_ZERO, 0, STRNULL, 0);
+		(void) t_search(&buf, LIST, TW_ZERO, 0, STRNULL, 0);
 		i = k + 1;
 	    }
 	    cleanup_until(tmp);
 	}
-	cleanup_until(buf);
+	cleanup_until(&buf);
 	if (k != i) {
 	    if (i != 0)
 		xputchar('\n');
