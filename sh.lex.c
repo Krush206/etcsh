@@ -162,6 +162,7 @@ lex(struct wordent *hp)
 	getexcl(c);
     else
 	unreadc(c);
+    cleanup_push(hp, lex_cleanup);
     wdp = hp;
     /*
      * The following loop is written so that the links needed by freelex will
@@ -170,7 +171,7 @@ lex(struct wordent *hp)
     do {
 	struct wordent *new;
 
-	new = xalloc(ALLOC_LEXBUF);
+	new = xmalloc(sizeof(*new));
 	new->word = NULL;
 	new->prev = wdp;
 	new->next = hp;
@@ -183,6 +184,8 @@ lex(struct wordent *hp)
 	    stderror(ERR_LTOOLONG);
 	}
     } while (wdp->word[0] != '\n');
+    cleanup_ignore(hp);
+    cleanup_until(hp);
     Strbuf_terminate(&histline);
     if (histline.len != 0 && histline.s[histline.len - 1] == '\n')
 	histline.s[histline.len - 1] = '\0';
@@ -262,32 +265,39 @@ initlex(struct wordent *vp)
 }
 
 void
-freelex(void)
+freelex(struct wordent *vp)
 {
-    struct Memory *ptr;
+    struct wordent *fp;
 
-    for (ptr = (*lexmem)->next; ptr != *lexmem; ptr = ptr->next)
-	ptr->use = 0;
+    while (vp->next != vp) {
+	fp = vp->next;
+	vp->next = fp->next;
+	xfree(fp->word);
+	xfree(fp);
+    }
+    vp->prev = vp;
 }
 
 void
-lex_cleanup(void *xmem)
+lex_cleanup(void *xvp)
 {
-    USE(xmem);
-    freelex();
+    struct wordent *vp;
+
+    vp = xvp;
+    freelex(vp);
 }
 
 static Char *
 word(int parsehtime)
 {
     eChar c, c1;
-    struct Strbuf *wbuf;
+    struct Strbuf wbuf = Strbuf_INIT;
     Char    hbuf[12];
     int	    h;
     int dolflg;
     int toolong = 0;
 
-    cleanup_push(wbuf = Strbuf_alloc(), Strbuf_cleanup);
+    cleanup_push(&wbuf, Strbuf_cleanup);
 loop:
     if (enterhist && toolong++ > 256 * 1024) {
 	stderror(ERR_WTOOLONG);
@@ -300,10 +310,10 @@ loop:
 	case '|':
 	case '<':
 	case '>':
-	    Strbuf_append1(wbuf, c);
+	    Strbuf_append1(&wbuf, c);
 	    c1 = getC(DOALL);
 	    if (c1 == c)
-		Strbuf_append1(wbuf, c1);
+		Strbuf_append1(&wbuf, c1);
 	    else
 		ungetC(c1);
 	    goto ret;
@@ -313,7 +323,7 @@ loop:
 		break;
 	    if (intty) {
 		do
-		    Strbuf_append1(wbuf, c);
+		    Strbuf_append1(&wbuf, c);
 		while ((c = getC(0)) != CHAR_ERR && c != '\n');
 		ungetC('\n');
 		goto ret;
@@ -338,7 +348,7 @@ loop:
 	case '(':
 	case ')':
 	case '\n':
-	    Strbuf_append1(wbuf, c);
+	    Strbuf_append1(&wbuf, c);
 	    goto ret;
 
 	case '\\':
@@ -349,7 +359,7 @@ loop:
 		goto loop;
 	    }
 	    if (c != (eChar)HIST)
-		Strbuf_append1(wbuf, '\\');
+		Strbuf_append1(&wbuf, '\\');
 	    c |= QUOTE;
 	default:
 	    break;
@@ -408,7 +418,7 @@ loop:
 		    break;
 		}
 		if (c != (eChar)HIST)
-		    Strbuf_append1(wbuf, '\\');
+		    Strbuf_append1(&wbuf, '\\');
 		c |= QUOTE;
 	    }
 	    else if (cmap(c, _QF | _QB)) {	/* '"` */
@@ -420,12 +430,13 @@ loop:
 		break;
 	    }
 	}
-	Strbuf_append1(wbuf, c);
+	Strbuf_append1(&wbuf, c);
 	c = getC(dolflg);
     }
 ret:
-    cleanup_until(wbuf);
-    return wbuf->s;
+    cleanup_ignore(&wbuf);
+    cleanup_until(&wbuf);
+    return Strbuf_finish(&wbuf);
 }
 
 static eChar
@@ -493,7 +504,7 @@ getC1(int flag)
 static void
 getdol(void)
 {
-    struct Strbuf *name;
+    struct Strbuf name = Strbuf_INIT;
     eChar c;
     eChar   sc;
     int    special = 0;
@@ -504,15 +515,15 @@ getdol(void)
 	ungetC('$' | QUOTE);
 	return;
     }
-    cleanup_push(name = Strbuf_alloc(), Strbuf_cleanup);
-    Strbuf_append1(name, '$');
+    cleanup_push(&name, Strbuf_cleanup);
+    Strbuf_append1(&name, '$');
     if (c == '\'') {
 	for (;;) {
-	    Strbuf_append1(name, c);
+	    Strbuf_append1(&name, c);
 	    c = getC(DOEXCL);
 	    if (c == '\'') break;
 	    if (c == '\\') {
-		Strbuf_append1(name, c);
+		Strbuf_append1(&name, c);
 		c = getC(DOEXCL);
 	    }
 	    if (c == '\n') {
@@ -521,14 +532,14 @@ getdol(void)
 		goto end;
 	    }
 	}
-	Strbuf_append1(name, c);
+	Strbuf_append1(&name, c);
 	goto end;
     }
     if (c == '{')
-	Strbuf_append1(name, c), c = getC(DOEXCL);
+	Strbuf_append1(&name, c), c = getC(DOEXCL);
     if (c == '#' || c == '?' || c == '%')
-	special++, Strbuf_append1(name, c), c = getC(DOEXCL);
-    Strbuf_append1(name, c);
+	special++, Strbuf_append1(&name, c), c = getC(DOEXCL);
+    Strbuf_append1(&name, c);
     switch (c) {
 
     case '$':
@@ -540,7 +551,7 @@ getdol(void)
 
     case '\n':
 	ungetD(c);
-	name->len--;
+	name.len--;
 	if (!special)
 	    seterror(ERR_NEWLINE);
 	goto end;
@@ -562,7 +573,7 @@ getdol(void)
 	    while ((c = getC(DOEXCL)) != 0) {
 		if (!Isdigit(c))
 		    break;
-		Strbuf_append1(name, c);
+		Strbuf_append1(&name, c);
 	    }
 	}
 	else if (letter(c)) {
@@ -570,7 +581,7 @@ getdol(void)
 		/* Bugfix for ${v123x} from Chris Torek, DAS DEC-90. */
 		if (!letter(c) && !Isdigit(c))
 		    break;
-		Strbuf_append1(name, c);
+		Strbuf_append1(&name, c);
 	    }
 	}
 	else {
@@ -578,14 +589,14 @@ getdol(void)
 		seterror(ERR_VARILL);
 	    else {
 		ungetD(c);
-		name->len--;
+		name.len--;
 	    }
 	    goto end;
 	}
 	break;
     }
     if (c == '[') {
-	Strbuf_append1(name, c);
+	Strbuf_append1(&name, c);
 	do {
 	    /*
 	     * Michael Greim: Allow $ expansion to take place in selector
@@ -594,11 +605,11 @@ getdol(void)
 	    c = getC(DOEXCL | DODOL);
 	    if (c == '\n') {
 		ungetD(c);
-		name->len--;
+		name.len--;
 		seterror(ERR_NLINDEX);
 		goto end;
 	    }
-	    Strbuf_append1(name, c);
+	    Strbuf_append1(&name, c);
 	} while (c != ']');
 	c = getC(DOEXCL);
     }
@@ -611,29 +622,29 @@ getdol(void)
 	int     gmodflag = 0, amodflag = 0;
 
 	do {
-	    Strbuf_append1(name, c), c = getC(DOEXCL), gmodflag = 0, amodflag = 0;
+	    Strbuf_append1(&name, c), c = getC(DOEXCL), gmodflag = 0, amodflag = 0;
 	    if (c == 'g' || c == 'a') {
 		if (c == 'g')
 		    gmodflag++;
 		else
 		    amodflag++;
-		Strbuf_append1(name, c); c = getC(DOEXCL);
+		Strbuf_append1(&name, c); c = getC(DOEXCL);
 	    }
 	    if ((c == 'g' && !gmodflag) || (c == 'a' && !amodflag)) {
 		if (c == 'g')
 		    gmodflag++;
 		else
 		    amodflag++;
-		Strbuf_append1(name, c); c = getC(DOEXCL);
+		Strbuf_append1(&name, c); c = getC(DOEXCL);
 	    }
-	    Strbuf_append1(name, c);
+	    Strbuf_append1(&name, c);
 	    /* scan s// [eichin:19910926.0512EST] */
 	    if (c == 's') {
 		int delimcnt = 2;
 		int esc = 0;
 		eChar delim = getC(0);
 
-		Strbuf_append1(name, delim);
+		Strbuf_append1(&name, delim);
 		if (!delim || letter(delim)
 		    || Isdigit(delim) || any(" \t\n", delim)) {
 		    seterror(ERR_BADSUBST);
@@ -642,10 +653,10 @@ getdol(void)
 		while ((c = getC(0)) != CHAR_ERR) {
 		    if (esc == 0 && c == '\\') {
 			esc = 1;
-			Strbuf_append1(name, c);
+			Strbuf_append1(&name, c);
 			continue;
 		    }
-		    Strbuf_append1(name, c);
+		    Strbuf_append1(&name, c);
 		    if (!esc && c == delim) delimcnt--;
 		    if (!delimcnt) break;
 		    esc = 0;
@@ -675,11 +686,12 @@ getdol(void)
 	    seterror(ERR_MISSING, '}');
 	    goto end;
 	}
-	Strbuf_append1(name, c);
+	Strbuf_append1(&name, c);
     }
  end:
-    cleanup_until(name);
-    addla(name->s);
+    cleanup_ignore(&name);
+    cleanup_until(&name);
+    addla(Strbuf_finish(&name));
 }
 
 /* xfree()'s its argument */
@@ -1002,10 +1014,9 @@ subword(Char *cp, Char type, int *adid, size_t *start_pos)
     default:
 	for (mp = cp + *start_pos; *mp; mp++) {
 	    if (matchs(mp, lhsb.s)) {
-		struct Strbuf *wbuf;
+		struct Strbuf wbuf = Strbuf_INIT;
 
-		wbuf = Strbuf_alloc();
-		Strbuf_appendn(wbuf, cp, mp - cp);
+		Strbuf_appendn(&wbuf, cp, mp - cp);
 		for (np = rhsb.s; *np; np++)
 		    switch (*np) {
 
@@ -1015,17 +1026,17 @@ subword(Char *cp, Char type, int *adid, size_t *start_pos)
 			/* FALLTHROUGH */
 
 		    default:
-			Strbuf_append1(wbuf, *np);
+			Strbuf_append1(&wbuf, *np);
 			continue;
 
 		    case '&':
-			Strbuf_append(wbuf, lhsb.s);
+			Strbuf_append(&wbuf, lhsb.s);
 			continue;
 		    }
-		*start_pos = wbuf->len;
-		Strbuf_append(wbuf, mp + lhsb.len);
+		*start_pos = wbuf.len;
+		Strbuf_append(&wbuf, mp + lhsb.len);
 		*adid = 1;
-		return wbuf->s;
+		return Strbuf_finish(&wbuf);
 	    }
 	}
 	*adid = 0;
