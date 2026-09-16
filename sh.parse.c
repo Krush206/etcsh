@@ -663,18 +663,19 @@ again:
 }
 
 void
-freesyn(struct Memory **mem)
+freesyn(void)
 {
-    *mem = *treemem;
+    struct Memory *ptr;
+
+    for (ptr = (*treemem)->next; ptr != *treemem; ptr = ptr->next)
+	ptr->use = 0;
 }
 
 void
 syntax_cleanup(void *xmem)
 {
-    struct Memory **mem;
-
-    mem = xmem;
-    freesyn(mem);
+    USE(xmem);
+    freesyn();
 }
 
 void
