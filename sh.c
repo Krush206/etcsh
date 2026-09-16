@@ -76,10 +76,10 @@ extern int NLSMapsAreInited;
  */
 
 struct Memory (*lexmem)[MEM_LEX];
-
 struct Memory (*treemem)[MEM_TREE];
-
 struct Memory (*strmem)[MEM_STRBUF];
+struct Memory (*b2smem)[MEM_BLK2SHORT];
+struct Memory (*s2bmem)[MEM_SHORT2BLK];
 
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
@@ -118,6 +118,8 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
+static	Char		**b2salloc	(void);
+static	char		**s2balloc	(void);
 static	struct command	 *treealloc	(void);
 static	struct Strbuf	 *stralloc	(void);
 static	struct wordent	 *lexalloc	(void);
@@ -252,7 +254,7 @@ main(int argc, char **argv)
 #endif
 
     nlsinit();
-    initlex(&(*lexmem)->mem.lex);
+    initlex(&(*lexmem)->mem.lexbuf);
 
 #ifdef MALLOC_TRACE
     mal_setstatsfile(fdopen(dmove(xopen("/tmp/tcsh.trace",
@@ -2049,7 +2051,7 @@ process(int catch)
 	if (setintr)
 	    pintr_push_enable(&old_pintr_disabled);
 	freelex();
-	hadhist = lex(&(*lexmem)->mem.lex);
+	hadhist = lex(&(*lexmem)->mem.lexbuf);
 	if (setintr)
 	    cleanup_until(&old_pintr_disabled);
 	cleanup_push(*lexmem, lex_cleanup);
@@ -2065,7 +2067,7 @@ process(int catch)
 	    int odidfds = didfds;
 	    haderr = 1;
 	    didfds = 0;
-	    prlex(&(*lexmem)->mem.lex);
+	    prlex(&(*lexmem)->mem.lexbuf);
 	    flush();
 	    haderr = 0;
 	    didfds = odidfds;
@@ -2081,7 +2083,7 @@ process(int catch)
 	 * elsewhere...
 	 */
 	if (enterhist || (catch && intty && !whyles && !tellwhat && !arun))
-	    savehist(&(*lexmem)->mem.lex, enterhist > 1);
+	    savehist(&(*lexmem)->mem.lexbuf, enterhist > 1);
 
 	if (Expand && seterr)
 	    Expand = 0;
@@ -2103,29 +2105,29 @@ process(int catch)
 	 * If had a tellwhat from twenex() then do
 	 */
 	if (tellwhat) {
-	    (void) tellmewhat(&(*lexmem)->mem.lex, NULL);
+	    (void) tellmewhat(&(*lexmem)->mem.lexbuf, NULL);
 	    goto cmd_done;
 	}
 
-	alias(&(*lexmem)->mem.lex);
+	alias(&(*lexmem)->mem.lexbuf);
 
 #ifdef BSDJOBS
 	/*
 	 * If we are interactive, try to continue jobs that we have stopped
 	 */
 	if (prompt)
-	    continue_jobs(&(*lexmem)->mem.lex);
+	    continue_jobs(&(*lexmem)->mem.lexbuf);
 #endif				/* BSDJOBS */
 
 	/*
 	 * Check to see if the user typed "rm * .o" or something
 	 */
 	if (prompt)
-	    rmstar(&(*lexmem)->mem.lex);
+	    rmstar(&(*lexmem)->mem.lexbuf);
 	/*
 	 * Parse the words of the input into a parse tree.
 	 */
-	t = syntax((*lexmem)->mem.lex.next, &(*lexmem)->mem.lex, 0);
+	t = syntax((*lexmem)->mem.lexbuf.next, &(*lexmem)->mem.lexbuf, 0);
 	/*
 	 * We cannot cleanup push here, because cd /blah; echo foo
 	 * would rewind t on the chdir error, and free the rest of the command
@@ -2582,6 +2584,28 @@ xballoc(void)
 	past->next = new;
 	past = new;
     }
+    b2smem = xmalloc(sizeof *b2smem);
+    past = *b2smem;
+    ptr = *b2smem;
+    while (++ptr != &(*b2smem)[MEM_STRBUF]) {
+	new = ptr;
+	new->use = 0;
+	new->next = *b2smem;
+	new->prev = past;
+	past->next = new;
+	past = new;
+    }
+    s2bmem = xmalloc(sizeof *s2bmem);
+    past = *s2bmem;
+    ptr = *s2bmem;
+    while (++ptr != &(*s2bmem)[MEM_STRBUF]) {
+	new = ptr;
+	new->use = 0;
+	new->next = *s2bmem;
+	new->prev = past;
+	past->next = new;
+	past = new;
+    }
 }
 
 void *
@@ -2594,6 +2618,10 @@ xalloc(int type)
 	return treealloc();
     case ALLOC_STRBUF:
 	return stralloc();
+    case ALLOC_SHORT2BLK:
+	return s2balloc();
+    case ALLOC_BLK2SHORT:
+	return b2salloc();
     }
     stderror(ERR_SILENT);
     return NULL;
@@ -2607,7 +2635,7 @@ lexalloc(void)
     for (ptr = (*lexmem)->next; ptr != *lexmem; ptr = ptr->next)
 	if (!ptr->use) {
 	    ptr->use = 1;
-	    return &ptr->mem.lex;
+	    return &ptr->mem.lexbuf;
 	}
     stderror(ERR_NOMEM);
     return NULL;
@@ -2621,7 +2649,35 @@ treealloc(void)
     for (ptr = (*treemem)->next; ptr != *treemem; ptr = ptr->next)
 	if (!ptr->use) {
 	    ptr->use = 1;
-	    return &ptr->mem.tree;
+	    return &ptr->mem.treebuf;
+	}
+    stderror(ERR_NOMEM);
+    return NULL;
+}
+
+static Char **
+b2salloc(void)
+{
+    struct Memory *ptr;
+
+    for (ptr = (*b2smem)->next; ptr != *b2smem; ptr = ptr->next)
+	if (!ptr->use) {
+	    ptr->use = 1;
+	    return ptr->mem.blk2short;
+	}
+    stderror(ERR_NOMEM);
+    return NULL;
+}
+
+static char **
+s2balloc(void)
+{
+    struct Memory *ptr;
+
+    for (ptr = (*s2bmem)->next; ptr != *s2bmem; ptr = ptr->next)
+	if (!ptr->use) {
+	    ptr->use = 1;
+	    return ptr->mem.short2blk;
 	}
     stderror(ERR_NOMEM);
     return NULL;
@@ -2635,7 +2691,7 @@ stralloc(void)
     for (ptr = (*strmem)->next; ptr != *strmem; ptr = ptr->next)
 	if (!ptr->use) {
 	    ptr->use = 1;
-	    return &ptr->mem.str;
+	    return &ptr->mem.Strbuf;
 	}
     stderror(ERR_NOMEM);
     return NULL;
