@@ -590,7 +590,7 @@ static int
 insert_meta(const Char *cp, const Char *cpend, const Char *word,
 	    int closequotes)
 {
-    struct Strbuf *buffer;
+    struct Strbuf buffer = Strbuf_INIT;
     Char *bptr;
     const Char *wptr;
     int in_sync = (cp != NULL);
@@ -599,14 +599,13 @@ insert_meta(const Char *cp, const Char *cpend, const Char *word,
     Char w, wq;
     int res;
 
-    cleanup_push(buffer = Strbuf_alloc(), Strbuf_cleanup);
     for (wptr = word;;) {
 	if (cp >= cpend)
 	    in_sync = 0;
 	if (in_sync && !cmap(qu, _ESC) && cmap(*cp, _QF|_ESC))
 	    if (qu == 0 || qu == *cp) {
 		qu ^= *cp;
-		Strbuf_append1(buffer, *cp++);
+		Strbuf_append1(&buffer, *cp++);
 		continue;
 	    }
 	w = *wptr;
@@ -627,55 +626,54 @@ insert_meta(const Char *cp, const Char *cpend, const Char *word,
 	    /* We have to unquote the character */
 	    in_sync = 0;
 	    if (cmap(qu, _ESC))
-		buffer->s[buffer->len - 1] = w;
+		buffer.s[buffer.len - 1] = w;
 	    else {
-		Strbuf_append1(buffer, qu);
-		Strbuf_append1(buffer, w);
+		Strbuf_append1(&buffer, qu);
+		Strbuf_append1(&buffer, w);
 		if (wptr[1] == 0)
 		    qu = 0;
 		else
-		    Strbuf_append1(buffer, qu);
+		    Strbuf_append1(&buffer, qu);
 	    }
 	} else if (qu && w == qu) {
 	    in_sync = 0;
-	    if (buffer->len != 0 && buffer->s[buffer->len - 1] == qu) {
+	    if (buffer.len != 0 && buffer.s[buffer.len - 1] == qu) {
 		/* User misunderstanding :) */
-		buffer->s[buffer->len - 1] = '\\';
-		Strbuf_append1(buffer, w);
+		buffer.s[buffer.len - 1] = '\\';
+		Strbuf_append1(&buffer, w);
 		qu = 0;
 	    } else {
-		Strbuf_append1(buffer, qu);
-		Strbuf_append1(buffer, '\\');
-		Strbuf_append1(buffer, w);
-		Strbuf_append1(buffer, qu);
+		Strbuf_append1(&buffer, qu);
+		Strbuf_append1(&buffer, '\\');
+		Strbuf_append1(&buffer, w);
+		Strbuf_append1(&buffer, qu);
 	    }
 	}
 	else if (wq && qu == '\"' && tricky_dq(w)) {
 	    in_sync = 0;
-	    Strbuf_append1(buffer, qu);
-	    Strbuf_append1(buffer, '\\');
-	    Strbuf_append1(buffer, w);
-	    Strbuf_append1(buffer, qu);
+	    Strbuf_append1(&buffer, qu);
+	    Strbuf_append1(&buffer, '\\');
+	    Strbuf_append1(&buffer, w);
+	    Strbuf_append1(&buffer, qu);
 	} else if (wq &&
 		   ((!qu && (tricky(w) || (w == HISTSUB && HISTSUB != '\0'
-		       && buffer->len == 0))) ||
+		       && buffer.len == 0))) ||
 		    (!cmap(qu, _ESC) && w == HIST && HIST != '\0'))) {
 	    in_sync = 0;
-	    Strbuf_append1(buffer, '\\');
-	    Strbuf_append1(buffer, w);
+	    Strbuf_append1(&buffer, '\\');
+	    Strbuf_append1(&buffer, w);
 	} else {
 	    if (in_sync && *cp++ != w)
 		in_sync = 0;
-	    Strbuf_append1(buffer, w);
+	    Strbuf_append1(&buffer, w);
 	}
 	wptr++;
 	if (cmap(qu, _ESC))
 	    qu = 0;
     }
     if (closequotes && qu && !cmap(qu, _ESC))
-	Strbuf_append1(buffer, w);
-    cleanup_until(buffer);
-    bptr = buffer->s;
+	Strbuf_append1(&buffer, w);
+    bptr = Strbuf_finish(&buffer);
     if (ndel)
 	DeleteBack(ndel);
     res = InsertStr(bptr);
@@ -1860,21 +1858,19 @@ extract_dir_and_name(const Char *path, struct Strbuf *dir, Char **name)
 Char *
 dollar(const Char *old)
 {
-    struct Strbuf *buf;
+    struct Strbuf buf = Strbuf_INIT;
 
-    cleanup_push(buf = Strbuf_alloc(), Strbuf_cleanup);
     while (*old) {
 	if (*old != '$')
-	    Strbuf_append1(buf, *old++);
+	    Strbuf_append1(&buf, *old++);
 	else {
-	    if (expdollar(buf, &old, QUOTE) == 0) {
-		cleanup_until(buf);
+	    if (expdollar(&buf, &old, QUOTE) == 0) {
+		xfree(buf.s);
 		return NULL;
 	    }
 	}
     }
-    cleanup_until(buf);
-    return buf->s;
+    return Strbuf_finish(&buf);
 } /* end dollar */
 
 
