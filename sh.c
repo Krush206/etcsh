@@ -114,6 +114,7 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
+static	struct Memory	 *memsrch	(void *);
 static	void		  xballoc	(void);
 static	int		  srccat	(Char *, Char *);
 #ifndef WINNT_NATIVE
@@ -2541,7 +2542,11 @@ xcalloc(size_t n, size_t size)
     size_t total;
     void *new;
 
+    if (n > 0 && size > SIZE_MAX / n)
+	stderror(ERR_NOMEM);
     total = n * size;
+    if (total == 0)
+	return NULL;
     if (total >= BUF_MAX)
 	stderror(ERR_NOMEM);
     new = xmalloc(total);
@@ -2554,15 +2559,23 @@ void *
 xrealloc(void *ptr, size_t size)
 {
     void *new;
+    struct Memory *pool;
 
-    if (size == 0)
+    if (size == 0) {
+	xfree(ptr);
 	return NULL;
+    }
     if (ptr == NULL)
 	return xmalloc(size);
     new = xmalloc(size);
     if (new == NULL)
-	stderror(ERR_NOMEM);
-    (void) memcpy(new, ptr, size);
+	stderror(ERR_SILENT);
+    pool = memsrch(ptr);
+    if (pool == NULL) {
+	xfree(new);
+	stderror(ERR_SILENT);
+    }
+    (void) memcpy(new, ptr, pool->size);
     xfree(ptr);
     return new;
 }
@@ -2572,18 +2585,21 @@ xmalloc(size_t size)
 {
     struct Memory *ptr;
 
+    if (size == 0)
+	return NULL;
     if (size >= BUF_MAX)
 	stderror(ERR_NOMEM);
     for (ptr = (*mem)->next; ptr != *mem; ptr = ptr->next)
 	if (!ptr->use) {
 	    ptr->use = 1;
+	    ptr->size = size;
 	    return ptr->alloc = &ptr->buf[BUF_MAX - size];
 	}
     stderror(ERR_NOMEM);
     return NULL;
 }
 
-void
+static void
 xballoc(void)
 {
     struct Memory *new;
@@ -2606,15 +2622,24 @@ xballoc(void)
     (*mem)->prev = new;
 }
 
+static struct Memory *
+memsrch(void *ptr)
+{
+    struct Memory *pool;
+
+    for (pool = (*mem)->next; pool != *mem; pool = pool->next)
+	if (pool->alloc == ptr)
+	    return pool;
+    return NULL;
+}
+
 void
 xfree(void *ptr)
 {
-    struct Memory *f;
+    struct Memory *pool;
 
-    for (f = (*mem)->next; f != *mem; f = f->next)
-	if (f->alloc == ptr) {
-	    f->use = 0;
-	    return;
-	}
-    stderror(ERR_SILENT);
+    pool = memsrch(ptr);
+    if (pool == NULL)
+	return;
+    pool->use = 0;
 }
