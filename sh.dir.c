@@ -234,7 +234,7 @@ dodirs(Char **v, struct command *c)
 	    fdp = dp;
 	    dp = dp->di_next;
 	    if (fdp != &dhead)
-		dxfree(fdp);
+		dfree(fdp);
 	}
 	dhead.di_next = dhead.di_prev = dp;
 	dp->di_next = dp->di_prev = &dhead;
@@ -514,7 +514,7 @@ dochngd(Char **v, struct command *c)
 	    stderror(ERR_SYSTEM, tmp, strerror(errno));
 	dcwd->di_prev->di_next = dcwd->di_next;
 	dcwd->di_next->di_prev = dcwd->di_prev;
-	dxfree(dcwd);
+	dfree(dcwd);
 	dnewcwd(dp, dflag);
 	return;
     }
@@ -528,7 +528,7 @@ dochngd(Char **v, struct command *c)
     dp->di_prev = dcwd->di_prev;
     dp->di_prev->di_next = dp;
     dp->di_next->di_prev = dp;
-    dxfree(dcwd);
+    dfree(dcwd);
     dnewcwd(dp, dflag);
 }
 
@@ -831,7 +831,7 @@ dopopd(Char **v, struct command *c)
     }
     dp->di_prev->di_next = dp->di_next;
     dp->di_next->di_prev = dp->di_prev;
-    dxfree(dp);
+    dfree(dp);
     if (dp == dcwd) {
         dnewcwd(p, dflag);
     }
@@ -841,10 +841,10 @@ dopopd(Char **v, struct command *c)
 }
 
 /*
- * dxfree - xfree the directory (or keep it if it still has ref count)
+ * dfree - xfree the directory (or keep it if it still has ref count)
  */
 void
-dxfree(struct directory *dp)
+dfree(struct directory *dp)
 {
 
     if (dp->di_count != 0) {
@@ -1201,7 +1201,7 @@ dnewcwd(struct directory *dp, int dflag)
 	    if (dn != dp && Strcmp(dn->di_name, dp->di_name) == 0) {
 		dn->di_next->di_prev = dn->di_prev;
 		dn->di_prev->di_next = dn->di_next;
-		dxfree(dn);
+		dfree(dn);
 		break;
 	    }
     }
@@ -1235,7 +1235,7 @@ dsetstack(void)
 	dn->di_next->di_prev = dn->di_prev;
 	dn->di_prev->di_next = dn->di_next;
 	if (dn != dcwd)
-	    dxfree(dn);
+	    dfree(dn);
     }
 
     /* thread the current working directory */
