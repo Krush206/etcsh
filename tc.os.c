@@ -333,13 +333,13 @@ dosetspath(Char **v, struct command *c)
     struct sf *st;
 
     /*
-     * sfname() on AIX G9.9 at least, mallocs too pointers p, q
+     * sfname() on AIX G9.9 at least, xmallocs too pointers p, q
      * then does the equivalent of while (*p++ == *q++) continue;
-     * and then tries to free(p,q) them! Congrats to the wizard who
+     * and then tries to xfree(p,q) them! Congrats to the wizard who
      * wrote that one. I bet he tested it really well too.
-     * Sooo, we set dont_free :-)
+     * Sooo, we set dont_xfree :-)
      */
-    dont_free = 1;
+    dont_xfree = 1;
     for (i = 0, v++; *v && *v[0] != '\0'; v++, i++) {
 	s = short2str(*v);
 	if (isdigit(*s))
@@ -361,7 +361,7 @@ dosetspath(Char **v, struct command *c)
     }
     if (setspath(p, i) == -1)
 	stderror(ERR_SYSTEM, "setspath", strerror(errno));
-    dont_free = 0;
+    dont_xfree = 0;
 }
 
 /* sitename():
@@ -438,13 +438,13 @@ domigrate(Char **v, struct command *c)
 	/*
 	 * see comment in setspath()
 	 */
-	dont_free = 1;
+	dont_xfree = 1;
 	if ((st = sfname(s)) == NULL) {
-	    dont_free = 0;
+	    dont_xfree = 0;
 	    setname(s);
 	    stderror(ERR_NAME | ERR_STRING, CGETS(23, 7, "Site not found"));
 	}
-	dont_free = 0;
+	dont_xfree = 0;
 	new_site = st->sf_id;
 	++v;
     }
@@ -1061,7 +1061,7 @@ fix_strcoll_bug(void)
      * is valid! Our portable hack: open one so we call it with 0 used...
      * We have to call this routine every time the locale changes...
      *
-     * Of course it also tries to free the constant locale "C" it initially
+     * Of course it also tries to xfree the constant locale "C" it initially
      * had allocated, with the sequence
      * > setenv LANG "fr"
      * > ls^D
