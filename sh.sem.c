@@ -78,7 +78,7 @@ struct CommandList doltmp = { NULL,
 struct CommandList *dolptr = &doltmp;
 
 #ifdef VFORK
-static	void		vffree		(int);
+static	void		vfxfree		(int);
 #endif
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
@@ -600,7 +600,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 			    (void) signal(SIGQUIT, SIG_IGN);
 			}
 			else {
-			    (void) signal(SIGINT, vffree);
+			    (void) signal(SIGINT, vfxfree);
 			    (void) signal(SIGQUIT, SIG_DFL);
 			}
 # ifdef BSDJOBS
@@ -832,7 +832,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 #ifdef VFORK
 static void
 /*ARGSUSED*/
-vffree(int snum)
+vfxfree(int snum)
 {
     USE(snum);
 
@@ -1110,7 +1110,7 @@ fntmp_cleanup(void *xptr)
 	ptr->next->prev = ptr->prev;
 	ptr = ptr->next;
 	if (tmp->vec0 != NULL) {
-	    blkfree(tmp->vec0);
+	    blkxfree(tmp->vec0);
 	    tmp->enc->vec0 = NULL;
 	}
 	xfree(tmp->label);
@@ -1585,7 +1585,7 @@ doltmp_cleanup(void *xptr)
 	ptr->prev->next = ptr->next;
 	ptr->next->prev = ptr->prev;
 	ptr = ptr->next;
-	blkfree(tmp->t->t_dcom);
+	blkxfree(tmp->t->t_dcom);
 	tmp->t->t_dcom = tmp->sav;
 	xfree(tmp);
     }
