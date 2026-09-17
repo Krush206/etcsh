@@ -100,7 +100,7 @@ Dfix(struct command *t)
 		Char **expanded;
 
 		expanded = Dfix2(t->t_dcom);	/* found one */
-		blkfree(t->t_dcom);
+		blkxfree(t->t_dcom);
 		t->t_dcom = expanded;
 		return;
 	    }
@@ -122,12 +122,12 @@ Dfix1(Char *cp)
     Dv[1] = NULL;
     expanded = Dfix2(Dv);
     if (expanded[0] == NULL || expanded[1] != NULL) {
-	blkfree(expanded);
+	blkxfree(expanded);
 	setname(short2str(cp));
 	stderror(ERR_NAME | ERR_AMBIG);
     }
     cp = Strsave(expanded[0]);
-    blkfree(expanded);
+    blkxfree(expanded);
     return (cp);
 }
 
@@ -146,7 +146,7 @@ Dfix2(Char *const *v)
     unDredc(0);			/* Clear out any old peeks (at error) */
     dolp = 0;
     dolcnt = 0;			/* Clear out residual $ expands (...) */
-    cleanup_push(bb, bb_free);
+    cleanup_push(bb, bb_xfree);
     while (Dword(bb))
 	continue;
     cleanup_ignore(bb);
@@ -206,7 +206,7 @@ Dword(struct blk_buf *bb)
     int    sofar = 0;
     Char *str;
 
-    cleanup_push(wbuf, Strbuf_free);
+    cleanup_push(wbuf, Strbuf_xfree);
     for (;;) {
 	c = DgetC(DODOL);
 	switch (c) {
@@ -379,7 +379,7 @@ Dgetdol(void)
     int    dimen = 0, bitset = 0, length = 0;
     static Char *dolbang = NULL;
 
-    cleanup_push(name, Strbuf_free);
+    cleanup_push(name, Strbuf_xfree);
     dolmod.len = ndolflags = 0;
     c = sc = DgetC(0);
     if (c == DEOF) {
@@ -390,7 +390,7 @@ Dgetdol(void)
 	const Char *cp;
 	struct Strbuf *expanded = Strbuf_alloc();
 
-	cleanup_push(expanded, Strbuf_free);
+	cleanup_push(expanded, Strbuf_xfree);
 	for (;;) {
 	    c = DgetC(0);
 	    if ((c & TRIM) == '\'')
@@ -648,7 +648,7 @@ Dgetdol(void)
     upb = blklen(vp->vec);
     if (dimen == 0 && subscr == 0 && c == '[') {
 	name = Strbuf_alloc();
-	cleanup_push(name, Strbuf_free);
+	cleanup_push(name, Strbuf_xfree);
 	np = name->s;
 	for (;;) {
 	    c = DgetC(DODOL);	/* Allow $ expand within [ ] */
@@ -1189,7 +1189,7 @@ again:
 	    }
 	}
 	if (words != Dv)
-	    blkfree(words);
+	    blkxfree(words);
     }
     *obp = 0;
     tmp = short2str(obuf);
