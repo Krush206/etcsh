@@ -1533,7 +1533,7 @@ gethomedir(const Char *us)
 	    }
 	}
 	for (res1 = res; *res1; res1++)
-	    free(*res1);
+	    xfree(*res1);
 #if 0
 	/* Don't return if root */
 	if (rp != NULL && rp[0] == '/' && rp[1] == '\0') {
