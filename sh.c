@@ -378,14 +378,14 @@ main(int argc, char **argv)
     NoNLSRebind = getenv("NOREBIND") != NULL;
 #ifdef NLS
 # ifdef SETLOCALEBUG
-    dont_xfree = 1;
+    dont_free = 1;
 # endif /* SETLOCALEBUG */
     (void) setlocale(LC_ALL, "");
 # ifdef LC_COLLATE
     (void) setlocale(LC_COLLATE, "");
 # endif
 # ifdef SETLOCALEBUG
-    dont_xfree = 0;
+    dont_free = 0;
 # endif /* SETLOCALEBUG */
 # ifdef STRCOLLBUG
     fix_strcoll_bug();
