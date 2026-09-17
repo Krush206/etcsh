@@ -398,7 +398,7 @@ handleone(Char *str, Char **vl, int action)
     switch (action) {
     case G_ERROR:
 	setname(short2str(str));
-	blkfree(vl);
+	blkxfree(vl);
 	stderror(ERR_NAME | ERR_AMBIG);
 	break;
     case G_APPEND:
@@ -412,11 +412,11 @@ handleone(Char *str, Char **vl, int action)
 	    *strp++ = ' ';
 	}
 	*--strp = '\0';
-	blkfree(vl);
+	blkxfree(vl);
 	break;
     case G_IGNORE:
 	str = Strsave(strip(*vl));
-	blkfree(vl);
+	blkxfree(vl);
 	break;
     default:
 	break;
@@ -452,12 +452,12 @@ libglob(Char **vl)
 	ptr = short2qstr(*vl);
 	switch (glob(ptr, gflgs, 0, &globv)) {
 	case GLOB_ABEND:
-	    globfree(&globv);
+	    globxfree(&globv);
 	    setname(ptr);
 	    stderror(ERR_NAME | ERR_GLOB);
 	    /* NOTREACHED */
 	case GLOB_NOSPACE:
-	    globfree(&globv);
+	    globxfree(&globv);
 	    stderror(ERR_NOMEM);
 	    /* NOTREACHED */
 	default:
@@ -472,7 +472,7 @@ libglob(Char **vl)
     while (*++vl);
     vl = (globv.gl_pathc == 0 || (magic && !match && !nonomatch)) ?
 	NULL : blk2short(globv.gl_pathv);
-    globfree(&globv);
+    globxfree(&globv);
     return (vl);
 }
 
@@ -790,7 +790,7 @@ backeval(struct blk_buf *bb, struct Strbuf *word, Char *cp, int literal)
 		seterr = NULL;
 	    }
 
-	    freelex(&paraml1);
+	    xfreelex(&paraml1);
 	    (void) lex(&paraml1);
 	    cleanup_push(&paraml1, lex_cleanup);
 	    if (seterr)
