@@ -197,7 +197,7 @@ add_localedir_to_nlspath(const char *path)
 			 add_lang ? path : "", add_lang ? msgs_lang : "");
 
     tsetenv(STRNLSPATH, str2short(new));
-    free(new);
+    xfree(new);
 }
 #endif
 
@@ -239,7 +239,7 @@ main(int argc, char **argv)
 #endif /* NLS */
 
     STR_environ = blk2short(environ);
-    environ = short2blk(STR_environ);	/* So that we can free it */
+    environ = short2blk(STR_environ);	/* So that we can xfree it */
 
 #ifdef NLS_CATALOGS
     add_localedir_to_nlspath(LOCALEDIR);
@@ -378,14 +378,14 @@ main(int argc, char **argv)
     NoNLSRebind = getenv("NOREBIND") != NULL;
 #ifdef NLS
 # ifdef SETLOCALEBUG
-    dont_free = 1;
+    dont_xfree = 1;
 # endif /* SETLOCALEBUG */
     (void) setlocale(LC_ALL, "");
 # ifdef LC_COLLATE
     (void) setlocale(LC_COLLATE, "");
 # endif
 # ifdef SETLOCALEBUG
-    dont_free = 0;
+    dont_xfree = 0;
 # endif /* SETLOCALEBUG */
 # ifdef STRCOLLBUG
     fix_strcoll_bug();
@@ -1952,7 +1952,7 @@ pintr1(int wantnl)
  * also by a subset of this code in sh.glob.c in the routine backeval.
  *
  * The code here is a little strange because part of it is interruptible
- * and hence freeing of structures appears to occur when none is necessary
+ * and hence xfreeing of structures appears to occur when none is necessary
  * if this is ignored.
  *
  * Note that if catch is not set then we will unwind on any error.
@@ -2042,7 +2042,7 @@ process(int catch)
 	 */
 	if (setintr)
 	    pintr_push_enable(&old_pintr_disabled);
-	freelex(&paraml);
+	xfreelex(&paraml);
 	hadhist = lex(&paraml);
 	if (setintr)
 	    cleanup_until(&old_pintr_disabled);
@@ -2122,10 +2122,10 @@ process(int catch)
 	t = syntax(paraml.next, &paraml, 0);
 	/*
 	 * We cannot cleanup push here, because cd /blah; echo foo
-	 * would rewind t on the chdir error, and free the rest of the command
+	 * would rewind t on the chdir error, and xfree the rest of the command
 	 */
 	if (seterr) {
-	    freesyn(t);
+	    xfreesyn(t);
 	    stderror(ERR_OLD);
 	}
 
@@ -2135,7 +2135,7 @@ process(int catch)
 	 * <mlschroe@immd4.informatik.uni-erlangen.de> was execute(t, tpgrp);
 	 */
 	execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
-	freesyn(t);
+	xfreesyn(t);
 
 	/*
 	 * Made it!
@@ -2536,110 +2536,21 @@ grabpgrp(int fd, pid_t desired)
     return -1;
 }
 
-void *
-xcalloc(size_t n, size_t size)
-{
-    size_t total;
-    void *new;
-
-    if (n > 0 && size > SIZE_MAX / n)
-	stderror(ERR_NOMEM);
-    total = n * size;
-    if (total == 0)
-	return NULL;
-    if (total >= BUF_MAX)
-	stderror(ERR_NOMEM);
-    new = xmalloc(total);
-    if (new == NULL)
-	stderror(ERR_NOMEM);
-    return memset(new, 0, total);
-}
-
-void *
-xrealloc(void *ptr, size_t size)
-{
-    void *new;
-    struct Memory *pool;
-
-    if (size == 0) {
-	xfree(ptr);
-	return NULL;
-    }
-    if (ptr == NULL)
-	return xmalloc(size);
-    new = xmalloc(size);
-    if (new == NULL)
-	stderror(ERR_SILENT);
-    pool = memsrch(ptr);
-    if (pool == NULL) {
-	xfree(new);
-	stderror(ERR_SILENT);
-    }
-    (void) memcpy(new, ptr, pool->size);
-    xfree(ptr);
-    return new;
-}
-
-void *
-xmalloc(size_t size)
-{
-    struct Memory *ptr;
-
-    if (size == 0)
-	return NULL;
-    if (size >= BUF_MAX)
-	stderror(ERR_NOMEM);
-    for (ptr = (*mem)->next; ptr != *mem; ptr = ptr->next)
-	if (!ptr->use) {
-	    ptr->use = 1;
-	    ptr->size = size;
-	    return ptr->alloc = &ptr->buf[BUF_MAX - size];
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
 static void
 xballoc(void)
 {
     struct Memory *new;
     struct Memory *past;
 
-#ifdef SYSMALLOC
-    mem = smalloc(sizeof *mem);
-#else
     mem = malloc(sizeof *mem);
-#endif
     new = *mem;
     past = *mem;
     while (++new != &(*mem)[MEM_MAX]) {
 	new->use = 0;
+	new->size = 0;
+	new->alloc = NULL;
 	new->next = *mem;
-	new->prev = past;
 	past->next = new;
 	past = new;
     }
-    (*mem)->prev = new;
-}
-
-static struct Memory *
-memsrch(void *ptr)
-{
-    struct Memory *pool;
-
-    for (pool = (*mem)->next; pool != *mem; pool = pool->next)
-	if (pool->alloc == ptr)
-	    return pool;
-    return NULL;
-}
-
-void
-xfree(void *ptr)
-{
-    struct Memory *pool;
-
-    pool = memsrch(ptr);
-    if (pool == NULL)
-	return;
-    pool->use = 0;
 }
