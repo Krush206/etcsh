@@ -87,7 +87,7 @@ typedef struct {
 /* #endif */
 
 int	glob (const char *, int, int (*)(const char *, int), glob_t *);
-void	globfree (glob_t *);
+void	globxfree (glob_t *);
 int	globcharcoll (Char, Char, int);
 
 #endif /* !_GLOB_H_ */
