@@ -112,7 +112,6 @@ static time_t  chktim;		/* Time mail last checked */
 char *progname;
 int tcsh;
 
-static	struct Memory	 *memsrch	(void *);
 static	void		  xballoc	(void);
 static	int		  srccat	(Char *, Char *);
 #ifndef WINNT_NATIVE
@@ -237,7 +236,7 @@ main(int argc, char **argv)
 #endif /* NLS */
 
     STR_environ = blk2short(environ);
-    environ = short2blk(STR_environ);	/* So that we can xfree it */
+    environ = short2blk(STR_environ);	/* So that we can free it */
 
 #ifdef NLS_CATALOGS
     add_localedir_to_nlspath(LOCALEDIR);
@@ -1950,7 +1949,7 @@ pintr1(int wantnl)
  * also by a subset of this code in sh.glob.c in the routine backeval.
  *
  * The code here is a little strange because part of it is interruptible
- * and hence xfreeing of structures appears to occur when none is necessary
+ * and hence freeing of structures appears to occur when none is necessary
  * if this is ignored.
  *
  * Note that if catch is not set then we will unwind on any error.
@@ -2120,7 +2119,7 @@ process(int catch)
 	t = syntax(paraml.next, &paraml, 0);
 	/*
 	 * We cannot cleanup push here, because cd /blah; echo foo
-	 * would rewind t on the chdir error, and xfree the rest of the command
+	 * would rewind t on the chdir error, and free the rest of the command
 	 */
 	if (seterr) {
 	    freesyn(t);
@@ -2132,7 +2131,6 @@ process(int catch)
 	 * Execute the parse tree From: Michael Schroeder
 	 * <mlschroe@immd4.informatik.uni-erlangen.de> was execute(t, tpgrp);
 	 */
-	execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
 	freesyn(t);
 
 	/*
