@@ -938,7 +938,7 @@ tellmewhat(struct wordent *lexp, Char **str)
 	aliased = 1;
     }
 
-    s0.dest = &sp->word;	/* to get the memory xfreeing right... */
+    s0.dest = &sp->word;	/* to get the memory freeing right... */
     s0.val = sp->word;
     cleanup_push(&s0, tellmewhat_s0_cleanup);
 
