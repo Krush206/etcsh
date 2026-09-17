@@ -466,7 +466,7 @@ typedef union {
 }      *memalign_t;
 
 # define malloc		lint_malloc
-# define xfree		lint_xfree
+# define free		lint_free
 # define realloc	lint_realloc
 # define calloc		lint_calloc
 #endif
@@ -1177,6 +1177,8 @@ EXTERN Char   *STR_BSHELL;
 EXTERN Char   *STR_WORD_CHARS;
 EXTERN Char   *STR_WORD_CHARS_VI;
 EXTERN Char  **STR_environ IZERO;
+
+extern int     dont_free;	/* Tell free that we are in danger if we free */
 
 extern Char    *INVPTR;
 extern Char    **INVPPTR;
