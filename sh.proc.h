@@ -38,7 +38,7 @@
 /*
  * Structure for each process the shell knows about:
  *	allocated and filled by pcreate.
- *	flushed by pflush; freeing always happens at top level
+ *	flushed by pflush; xfreeing always happens at top level
  *	    so the interrupt level has less to worry about.
  *	processes are related to "friends" when in a pipeline;
  *	    p_friends links makes a circular list of such jobs
