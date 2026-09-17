@@ -60,7 +60,7 @@
  *
  *  WARNING !!!: Under no circumstances should anyone change this
  *  module without fully understanding the impact on the C shell.
- *  The C shell has it's own malloc and printf routines and this
+ *  The C shell has it's own xmalloc and printf routines and this
  *  module was carefully written taking that into account.  Do not
  *  use any stdio routines from this module except printf.
  *
@@ -120,20 +120,20 @@ static int eflag;
 #define INVALID { \
 	if (eflag) xprintf(CGETS(10, 1, \
 				 "setpath: invalid command '%s'.\n"), cmd); \
-	freepaths(); \
+	xfreepaths(); \
 	return(-1); \
 }
 
 #define TOOFEW { \
 	if (eflag) xprintf(CGETS(10, 2, \
 		 "setpath: insufficient arguments to command '%s'.\n"), cmd); \
-	freepaths(); \
+	xfreepaths(); \
 	return(-1); \
 }
 
 static int initpaths	(char **);
 static void savepaths	(char **);
-static void freepaths	(void);
+static void xfreepaths	(void);
 static void tcsh_rcmd	(char *);
 static void icmd	(char *, char *);
 static void iacmd	(char *, char *);
@@ -223,7 +223,7 @@ setpath(char **paths, char **cmds, char *localsyspath, int dosuffix,
 	}
     }
     savepaths(paths);
-    freepaths();
+    xfreepaths();
     return(0);
 }
 
@@ -234,14 +234,14 @@ initpaths(char **paths)
     int i, done;
     struct pelem *pe, *pathend;
 
-    freepaths();
+    xfreepaths();
     for (npaths = 0; path = paths[npaths]; npaths++) {
 	val = index(path, '=');
 	if (val == NULL) {
 	    if (eflag)
 		xprintf(CGETS(10, 3,
 			      "setpath: value missing in path '%s'\n"), path);
-	    freepaths();
+	    xfreepaths();
 	    return(-1);
 	}
 	*val++ = '\0';
@@ -308,7 +308,7 @@ savepaths(char **paths)
 }
 
 static void
-freepaths(void)
+xfreepaths(void)
 {
     char *p;
     int i;
