@@ -387,7 +387,7 @@ struct cleanup_entry
 };
 
 static struct cleanup_entry *cleanup_stack INIT_ZERO; /* = NULL; */
-static size_t cleanup_sp INIT_ZERO; /* = 0; Next free entry */
+static size_t cleanup_sp INIT_ZERO; /* = 0; Next xfree entry */
 static size_t cleanup_mark INIT_ZERO; /* = 0; Last entry to handle before unwinding */
 static size_t cleanup_stack_size INIT_ZERO; /* = 0 */
 
@@ -613,11 +613,6 @@ stderror(unsigned int id, ...)
     int flags;
 
     va_start(va, id);
-
-    /*
-     * Reset don't free flag for buggy os's
-     */
-    dont_free = 0;
 
     flags = (int) id & ERR_FLAGS;
     id &= ~ERR_FLAGS;
