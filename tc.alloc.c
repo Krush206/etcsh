@@ -59,7 +59,7 @@ xmalloc(size_t size)
 	if (!pool->use) {
 	    pool->use = 1;
 	    pool->size = size;
-	    return pool->alloc = &pool->buf[BUF_MAX - size];
+	    return pool->buf;
 	}
     stderror(ERR_NOMEM);
     return NULL;
@@ -71,7 +71,7 @@ memsrch(void *ptr)
     struct Memory *pool;
 
     for (pool = (*mem)->next; pool != *mem; pool = pool->next)
-	if (pool->alloc == ptr)
+	if (pool->buf == ptr)
 	    return pool;
     return NULL;
 }
@@ -87,4 +87,9 @@ xfree(void *ptr)
     if (pool == NULL)
 	stderror(ERR_SILENT);
     pool->use = 0;
+}
+
+void
+showall(Char **v, struct command *c)
+{
 }
