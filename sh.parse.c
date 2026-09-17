@@ -37,7 +37,7 @@
 static	int		 asyntax (struct wordent *, struct wordent *);
 static	int		 asyn0 	 (struct wordent *, struct wordent *);
 static	int		 asyn3	 (struct wordent *, struct wordent *);
-static	struct wordent	*xfreenod (struct wordent *, struct wordent *);
+static	struct wordent	*freenod (struct wordent *, struct wordent *);
 static	struct command	*syn0	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn1	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn1a	 (const struct wordent *, const struct wordent *, int);
@@ -166,7 +166,7 @@ asyn3(struct wordent *p1, struct wordent *p2)
 	alout.next->word = Strspl(STRQNULL, cp);
 	xfree(cp);
     }
-    p1 = xfreenod(p1, redid ? p2 : p1->next);
+    p1 = freenod(p1, redid ? p2 : p1->next);
     if (alout.next != &alout) {
 	p1->next->prev = alout.prev->prev;
 	alout.prev->prev->next = p1->next;
@@ -179,7 +179,7 @@ asyn3(struct wordent *p1, struct wordent *p2)
 }
 
 static struct wordent *
-xfreenod(struct wordent *p1, struct wordent *p2)
+freenod(struct wordent *p1, struct wordent *p2)
 {
     struct wordent *retp = p1->prev;
 
@@ -689,6 +689,7 @@ freesyn(struct command *t)
     case NODE_OR:
     case NODE_PIPE:
     case NODE_LIST:
+    case NODE_LINE:
 	freesyn(t->t_dcar), freesyn(t->t_dcdr);
 	break;
     default:
