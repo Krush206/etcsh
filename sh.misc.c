@@ -734,7 +734,7 @@ blkcmp(Char **fb, Char **sb)
 }
 
 void
-blkcmpxfree(Char **fb, Char **sb)
+blkcmpfree(Char **fb, Char **sb)
 {
     if (fb == NULL)
 	fb = xcalloc(1, sizeof *fb);
@@ -771,5 +771,5 @@ blkcmp_cleanup(void *xblks)
     Char **(*blks)[2];
 
     blks = xblks;
-    blkcmpxfree(**blks, (*blks)[1]);
+    blkcmpfree(**blks, (*blks)[1]);
 }
