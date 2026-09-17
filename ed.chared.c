@@ -873,7 +873,7 @@ SetKillRing(int max)
 	    for (i = 0; i < KillRingLen; i++) {
 		if (i < count)	/* copy latest */
 		    new[i] = KillRing[j];
-		else		/* free the others */
+		else		/* xfree the others */
 		    xfree(KillRing[j].buf);
 		j = (j + 1) % KillRingLen;
 	    }
