@@ -157,7 +157,7 @@ asyn3(struct wordent *p1, struct wordent *p2)
     redid = lex(&alout);
     cleanup_until(&alvec);
     if (seterr) {
-	xfreelex(&alout);
+	freelex(&alout);
 	stderror(ERR_OLD);
     }
     if (p1->word[0] && eq(p1->word, alout.next->word)) {
@@ -664,7 +664,7 @@ again:
 }
 
 void
-xfreesyn(struct command *t)
+freesyn(struct command *t)
 {
     Char **v;
 
@@ -680,7 +680,7 @@ xfreesyn(struct command *t)
 	xfree(t->t_drit);
 	break;
     case NODE_PAREN:
-	xfreesyn(t->t_dspr);
+	freesyn(t->t_dspr);
 	xfree(t->t_dlef);
 	xfree(t->t_drit);
 	break;
@@ -689,7 +689,7 @@ xfreesyn(struct command *t)
     case NODE_OR:
     case NODE_PIPE:
     case NODE_LIST:
-	xfreesyn(t->t_dcar), xfreesyn(t->t_dcdr);
+	freesyn(t->t_dcar), freesyn(t->t_dcdr);
 	break;
     default:
 	break;
@@ -706,7 +706,7 @@ syntax_cleanup(void *xt)
     struct command *t;
 
     t = xt;
-    xfreesyn(t);
+    freesyn(t);
 }
 
 void
