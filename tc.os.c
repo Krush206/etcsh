@@ -337,9 +337,9 @@ dosetspath(Char **v, struct command *c)
      * then does the equivalent of while (*p++ == *q++) continue;
      * and then tries to xfree(p,q) them! Congrats to the wizard who
      * wrote that one. I bet he tested it really well too.
-     * Sooo, we set dont_xfree :-)
+     * Sooo, we set dont_free :-)
      */
-    dont_xfree = 1;
+    dont_free = 1;
     for (i = 0, v++; *v && *v[0] != '\0'; v++, i++) {
 	s = short2str(*v);
 	if (isdigit(*s))
@@ -361,7 +361,7 @@ dosetspath(Char **v, struct command *c)
     }
     if (setspath(p, i) == -1)
 	stderror(ERR_SYSTEM, "setspath", strerror(errno));
-    dont_xfree = 0;
+    dont_free = 0;
 }
 
 /* sitename():
@@ -438,13 +438,13 @@ domigrate(Char **v, struct command *c)
 	/*
 	 * see comment in setspath()
 	 */
-	dont_xfree = 1;
+	dont_free = 1;
 	if ((st = sfname(s)) == NULL) {
-	    dont_xfree = 0;
+	    dont_free = 0;
 	    setname(s);
 	    stderror(ERR_NAME | ERR_STRING, CGETS(23, 7, "Site not found"));
 	}
-	dont_xfree = 0;
+	dont_free = 0;
 	new_site = st->sf_id;
 	++v;
     }
