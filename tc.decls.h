@@ -43,6 +43,7 @@ extern	void		  xfree		(void *);
 extern	void		 *xmalloc	(size_t);
 extern	void		 *xrealloc	(void *, size_t);
 extern	void		 *xcalloc	(size_t, size_t);
+extern	void		  showall	(Char **, struct command *);
 
 /*
  * tc.bind.c
@@ -285,7 +286,7 @@ extern  struct blk_buf   *bb_alloc	(void);
 extern	void		  bb_append	(struct blk_buf *, Char *);
 extern	void		  bb_cleanup	(void *);
 extern	Char		**bb_finish	(struct blk_buf *);
-extern  void 		  bb_xfree	(void *);
+extern  void 		  bb_free	(void *);
 
 extern	struct strbuf	 *strbuf_alloc(void);
 extern	void		  strbuf_terminate(struct strbuf *);
@@ -295,7 +296,7 @@ extern  void		  strbuf_appendn(struct strbuf *, const char *,
 extern  void		  strbuf_append (struct strbuf *, const char *);
 extern  char		 *strbuf_finish (struct strbuf *);
 extern	void		  strbuf_cleanup(void *);
-extern	void		  strbuf_xfree(void *);
+extern	void		  strbuf_free(void *);
 extern	struct Strbuf	 *Strbuf_alloc(void);
 extern	void		  Strbuf_terminate(struct Strbuf *);
 extern  void		  Strbuf_append1(struct Strbuf *, Char);
@@ -304,7 +305,7 @@ extern  void		  Strbuf_appendn(struct Strbuf *, const Char *,
 extern  void		  Strbuf_append (struct Strbuf *, const Char *);
 extern  Char		 *Strbuf_finish (struct Strbuf *);
 extern	void		  Strbuf_cleanup(void *);
-extern	void		  Strbuf_xfree(void *);
+extern	void		  Strbuf_free(void *);
 
 
 /*
