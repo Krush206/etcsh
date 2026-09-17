@@ -447,7 +447,7 @@ pxfree(struct process *pp)
     xfree(pp->p_command);
     if (pp->p_cwd && --pp->p_cwd->di_count == 0)
 	if (pp->p_cwd->di_next == 0)
-	    dxfree(pp->p_cwd);
+	    dfree(pp->p_cwd);
     xfree(pp);
 }
 
