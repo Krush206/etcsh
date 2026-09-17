@@ -143,7 +143,7 @@
 #undef NEWGRP
 
 /*
- * SYSMALLOC	Use the system provided version of malloc and friends.
+ * SYSMALLOC	Use the system provided version of xmalloc and friends.
  *		This can be much slower and no memory statistics will be
  *		provided.
  */
