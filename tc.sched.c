@@ -118,7 +118,7 @@ dosched(Char **v, struct command *c)
 	if (count)
 	    stderror(ERR_SCHEDEV);
 	*pp = tp->t_next;
-	blkfree(tp->t_lex);
+	blkxfree(tp->t_lex);
 	xfree(tp);
 	return;
     }
@@ -226,7 +226,7 @@ sched_run(void)
 	lastword->next = &cmd;
 	cmd.prev = lastword;
 	sched_ptr = tp->t_next;	/* looping termination cond: */
-	blkfree(tp->t_lex);	/* straighten out in case of */
+	blkxfree(tp->t_lex);	/* straighten out in case of */
 	xfree(tp);		/* command blow-up. */
 
 	cleanup_push(&cmd, lex_cleanup);
@@ -239,7 +239,7 @@ sched_run(void)
 	    stderror(ERR_OLD);
 	/* execute the parse tree. */
 	execute(t, -1, NULL, NULL, TRUE);
-	/* done. free the lex list and parse tree. */
+	/* done. xfree the lex list and parse tree. */
 	cleanup_until(&cmd);
     }
     if (GettingInput && !just_signaled) {	/* PWP */
