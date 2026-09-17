@@ -40,7 +40,7 @@ extern struct Strbuf histline;
 Char HistLit = 0;
 
 static	int	heq	(const struct wordent *, const struct wordent *);
-static	void	hfree	(struct Hist *);
+static	void	hxfree	(struct Hist *);
 
 #define HIST_ONLY	0x01
 #define HIST_SAVE	0x02
@@ -116,13 +116,13 @@ discardExcess(int hlen)
      * full scan if the list is more than 6% (1/16th) too long. */
     while (histCount > (unsigned)hlen && (np = Histlist.Hnext)) {
         if (eventno - np->Href >= hlen || hlen == 0)
-            hremove(np), hfree(np);
+            hremove(np), hxfree(np);
         else
             break;
     }
     while (histCount > (unsigned)hlen && (np = histTail) != &Histlist) {
         if (eventno - np->Href >= hlen || hlen == 0)
-            hremove(np), hfree(np);
+            hremove(np), hxfree(np);
         else
             break;
     }
@@ -131,7 +131,7 @@ discardExcess(int hlen)
     for (hp = &Histlist; histCount > (unsigned)hlen &&
 	(np = hp->Hnext) != NULL;)
         if (eventno - np->Href >= hlen || hlen == 0)
-            hremove(np), hfree(np);
+            hremove(np), hxfree(np);
         else
             hp = np;
 }
@@ -158,7 +158,7 @@ savehist(
 #define hashFcnName "lookup3"
 /* From:
    lookup3.c, by Bob Jenkins, May 2006, Public Domain.
-   "...  You can use this free for any purpose.  It's in
+   "...  You can use this xfree for any purpose.  It's in
     the public domain.  It has no warranty."
    http://burtleburtle.net/bob/hash/index.html
  */
@@ -582,7 +582,7 @@ testHash(void)
 	if (hits)
 	    run++;
 	else {
-	    /* a real free slot, count it */
+	    /* a real xfree slot, count it */
 	    if (run >= sizeof(bins)/sizeof(bins[0])) /* clip */
 		run = highest = sizeof(bins)/sizeof(bins[0]) - 1;
 	    if (run > highest)
@@ -629,9 +629,9 @@ heq(const struct wordent *a0, const struct wordent *b0)
  * entry is located in the table using hash2tableIndex() and checking the
  * following entries in case of a collision (linear rehash).  Free entries in
  * the table are zero (0, NULL, emptyHTE).  Deleted entries that cannot yet be
- * freed are set to one (deletedHTE).  The Hist.Hhash member is non-zero iff
+ * xfreed are set to one (deletedHTE).  The Hist.Hhash member is non-zero iff
  * the entry is in the hash table.  When the hash table get too full, it is
- * reallocated to be approximately twice the history length (see
+ * xreallocated to be approximately twice the history length (see
  * getHashTableSize). */
 static struct Hist **histHashTable = NULL;
 static unsigned histHashTableLength = 0; /* number of Hist pointers in table */
@@ -779,7 +779,7 @@ insertHistHashTable(struct Hist *np, unsigned hashval)
         return;
     }
     assert(np != deletedHTE);
-    /* Find a free (empty or deleted) slot, using linear rehash. */
+    /* Find a xfree (empty or deleted) slot, using linear rehash. */
     assert(histHashTable);
     for (rehashes = 0;
          ((hi = hash2tableIndex(hashval + rehashes, histHashTableLength)),
@@ -955,7 +955,7 @@ enthist(
                 if (mflg && Htime != 0 && p->Hprev->Htime >= Htime)
                     pTime = p->Hprev;
                 hremove(p);
-		hfree(p);
+		hxfree(p);
                 p = NULL;               /* so new entry is allocated below */
 	    }
 	}
@@ -1014,7 +1014,7 @@ enthist(
         for (p = pp->Hnext; p && p->Htime == np->Htime; pp = p, p = p->Hnext) {
             if (heq(&p->Hlex, &np->Hlex)) {
                 eventno--;              /* duplicate, so don't add new event */
-                hfree(np);
+                hxfree(np);
                 return (p);
               }
           }
@@ -1035,12 +1035,12 @@ enthist(
 }
 
 static void
-hfree(struct Hist *hp)
+hxfree(struct Hist *hp)
 {
     assert(hp != histMerg);
     if (hp->Hhash)
         removeHistHashTable(hp);
-    freelex(&hp->Hlex);
+    xfreelex(&hp->Hlex);
     if (hp->histline)
         xfree(hp->histline);
     xfree(hp);
@@ -1167,7 +1167,7 @@ dohist(Char **vp, struct command *c)
     if (hflg & HIST_CLEAR) {
         struct Hist *np, *hp;
         for (hp = &Histlist; (np = hp->Hnext) != NULL;)
-            hremove(np), hfree(np);
+            hremove(np), hxfree(np);
     }
 
     if (hflg & (HIST_LOAD | HIST_MERGE))
@@ -1192,7 +1192,7 @@ cleanhist(void)
     for (hp = &Histlist; (np = hp->Hnext) != NULL;) {
 	if (np->Hnum != HIST_PURGE)
 	    return;
-	hremove(np), hfree(np);
+	hremove(np), hxfree(np);
     }
 }
 
