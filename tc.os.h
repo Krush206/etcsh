@@ -447,12 +447,12 @@ typedef struct timeval timeval_t;
 
 #ifdef NeXT
 /*
- * From Tony_Mason@transarc.com, override NeXT's xmalloc stuff.
+ * From Tony_Mason@transarc.com, override NeXT's malloc stuff.
  */
-# define xmalloc tcsh_xmalloc
-# define xcalloc tcsh_xcalloc
-# define xrealloc tcsh_xrealloc
-# define xfree tcsh_xfree
+# define malloc tcsh_malloc
+# define calloc tcsh_calloc
+# define realloc tcsh_realloc
+# define free tcsh_free
 #endif /* NeXT */
 
 #if defined(HAVE_GETHOSTNAME) && !HAVE_DECL_GETHOSTNAME
@@ -500,10 +500,10 @@ extern gid_t getgid(), getegid();
 # endif /* BSD */
 
 # ifdef SYSMALLOC
-extern memalign_t xmalloc();
-extern memalign_t xrealloc();
-extern memalign_t xcalloc();
-extern void xfree();
+extern memalign_t malloc();
+extern memalign_t realloc();
+extern memalign_t calloc();
+extern void free();
 # endif	/* SYSMALLOC */
 
 # ifdef BSDJOBS
