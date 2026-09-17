@@ -88,7 +88,7 @@ static struct {				/* Current element pointer	*/
     }
 
 static Char	*tw_str_add		(stringlist_t *, size_t);
-static void	 tw_str_xfree		(stringlist_t *);
+static void	 tw_str_free		(stringlist_t *);
 static int       tw_dir_next		(struct Strbuf *, DIR *);
 static void	 tw_cmd_add 		(const Char *name);
 static void 	 tw_cmd_cmd		(void);
@@ -132,11 +132,11 @@ tw_str_add(stringlist_t *sl, size_t len)
 } /* tw_str_add */
 
 
-/* tw_str_xfree():
+/* tw_str_free():
  *	Free a stringlist
  */
 static void
-tw_str_xfree(stringlist_t *sl)
+tw_str_free(stringlist_t *sl)
 {
     pintr_disabled++;
     if (sl->list) {
@@ -150,7 +150,7 @@ tw_str_xfree(stringlist_t *sl)
 	sl->tbuff = sl->nbuff = 0;
     }
     disabled_cleanup(&pintr_disabled);
-} /* end tw_str_xfree */
+} /* end tw_str_free */
 
 
 static int
@@ -182,16 +182,16 @@ tw_cmd_add(const Char *name)
 } /* end tw_cmd_add */
 
 
-/* tw_cmd_xfree():
+/* tw_cmd_free():
  *	Free the command list
  */
 void
-tw_cmd_xfree(void)
+tw_cmd_free(void)
 {
     CLRDIR(tw_dir_fd)
-    tw_str_xfree(&tw_cmd);
+    tw_str_free(&tw_cmd);
     tw_cmd_got = 0;
-} /* end tw_cmd_xfree */
+} /* end tw_cmd_free */
 
 /* tw_cmd_cmd():
  *	Add system commands to the command list
@@ -346,7 +346,7 @@ tw_cmd_start(DIR *dfd, const Char *pat)
     USE(pat);
     SETDIR(dfd)
     if ((tw_cmd_got & TW_FL_CMD) == 0) {
-	tw_cmd_xfree();
+	tw_cmd_free();
 	tw_cmd_cmd();
 	tw_cmd_got |= TW_FL_CMD;
     }
@@ -779,7 +779,7 @@ tw_dir_end(void)
 void
 tw_item_xfree(void)
 {
-    tw_str_xfree(&tw_item);
+    tw_str_free(&tw_item);
 } /* end tw_item_xfree */
 
 
