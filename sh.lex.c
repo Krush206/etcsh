@@ -55,7 +55,7 @@ static	struct Hist 	*findev		(Char *, int);
 static	void	 	 setexclp	(Char *);
 static	eChar	 	 bgetc		(void);
 static	void		 balloc		(int);
-static	void	 	 bfree		(void);
+static	void	 	 bxfree		(void);
 static	struct wordent	*gethent	(Char);
 static	int	 	 matchs		(const Char *, const Char *);
 static	int	 	 getsel		(int *, int *, int);
@@ -165,7 +165,7 @@ lex(struct wordent *hp)
     cleanup_push(hp, lex_cleanup);
     wdp = hp;
     /*
-     * The following loop is written so that the links needed by freelex will
+     * The following loop is written so that the links needed by xfreelex will
      * be ready and rarin to go even if it is interrupted.
      */
     do {
@@ -265,7 +265,7 @@ initlex(struct wordent *vp)
 }
 
 void
-freelex(struct wordent *vp)
+xfreelex(struct wordent *vp)
 {
     struct wordent *fp;
 
@@ -284,7 +284,7 @@ lex_cleanup(void *xvp)
     struct wordent *vp;
 
     vp = xvp;
-    freelex(vp);
+    xfreelex(vp);
 }
 
 static Char *
@@ -920,7 +920,7 @@ getsub(struct wordent *en)
  *
  * when using history substitution, and the variable
  * 'history' is set to a value higher than 1000,
- * the shell might either freeze (hang) or core-dump.
+ * the shell might either xfreeze (hang) or core-dump.
  * We raise the limit to 50000000
  */
 
@@ -1747,7 +1747,7 @@ bgetc(void)
 }
 
 static void
-bfree(void)
+bxfree(void)
 {
     int sb, i;
 
@@ -1870,8 +1870,8 @@ btoeof(void)
     alvecp = NULL;
     evalvec = NULL;
     evalp = NULL;
-    wfree();
-    bfree();
+    wxfree();
+    bxfree();
 }
 
 void
