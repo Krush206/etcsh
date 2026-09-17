@@ -690,7 +690,7 @@ dohash(Char **vv, struct command *c)
 #endif /* FASTHASH */
 
     (void) getusername(NULL);	/* flush the tilde cashe */
-    tw_cmd_xfree();
+    tw_cmd_free();
     havhash = 1;
     if (v == NULL)
 	return;
