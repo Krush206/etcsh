@@ -1201,8 +1201,8 @@ extern int	NoNLSRebind;
 extern char   **environ;
 #endif
 
-#define BUF_MAX 8192
-#define MEM_MAX 1024
+#define BUF_MAX (1024 * 32)
+#define MEM_MAX (1024 * 4)
 
 #include "tc.h"
 
@@ -1295,7 +1295,6 @@ struct StrbufList {
 struct Memory {
     size_t size;
     int use;
-    void *alloc;
     unsigned char buf[BUF_MAX];
     struct Memory *next;
 };
