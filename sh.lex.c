@@ -55,7 +55,7 @@ static	struct Hist 	*findev		(Char *, int);
 static	void	 	 setexclp	(Char *);
 static	eChar	 	 bgetc		(void);
 static	void		 balloc		(int);
-static	void	 	 bxfree		(void);
+static	void	 	 bfree		(void);
 static	struct wordent	*gethent	(Char);
 static	int	 	 matchs		(const Char *, const Char *);
 static	int	 	 getsel		(int *, int *, int);
@@ -920,7 +920,7 @@ getsub(struct wordent *en)
  *
  * when using history substitution, and the variable
  * 'history' is set to a value higher than 1000,
- * the shell might either xfreeze (hang) or core-dump.
+ * the shell might either freeze (hang) or core-dump.
  * We raise the limit to 50000000
  */
 
@@ -1747,7 +1747,7 @@ bgetc(void)
 }
 
 static void
-bxfree(void)
+bfree(void)
 {
     int sb, i;
 
@@ -1871,7 +1871,7 @@ btoeof(void)
     evalvec = NULL;
     evalp = NULL;
     wfree();
-    bxfree();
+    bfree();
 }
 
 void
