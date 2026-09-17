@@ -841,7 +841,7 @@ dopopd(Char **v, struct command *c)
 }
 
 /*
- * dfree - xfree the directory (or keep it if it still has ref count)
+ * dfree - free the directory (or keep it if it still has ref count)
  */
 void
 dfree(struct directory *dp)
@@ -864,7 +864,7 @@ dcanon(Char *cp, Char *p)
 {
     cleanup_push(cp, xfree);
     p = dcanon_internal(cp, p);
-    // coverity[use_after_xfree] we use the pointer as a marker
+    // coverity[use_after_free] we use the pointer as a marker
     cleanup_ignore(cp);
     cleanup_until(cp);
     return p;
