@@ -61,7 +61,7 @@ static	struct wordent	*histgetword	(struct wordent *);
 static	void	toend		(void);
 static	void	xecho		(int, Char **);
 static	int	islocale_var	(Char *);
-static	void	wpfree		(struct whyle *);
+static	void	wpxfree		(struct whyle *);
 static	int	srchenc		(struct CommandList *);
 static	int	getwhole	(struct Strbuf *);
 
@@ -275,7 +275,7 @@ doalias(Char **v, struct command *c)
 	    stderror(ERR_NAME | ERR_DANGER);
 	}
 	set1(strip(p), saveblk(v), &aliases, VAR_READWRITE);
-	tw_cmd_free();
+	tw_cmd_xfree();
     }
 }
 
@@ -285,7 +285,7 @@ unalias(Char **v, struct command *c)
 {
     USE(c);
     unset1(v, &aliases);
-    tw_cmd_free();
+    tw_cmd_xfree();
 }
 
 /*ARGSUSED*/
@@ -338,7 +338,7 @@ donewgrp(Char **v, struct command *c)
      */
     (void) execv(_PATH_BIN_NEWGRP, p);
     (void) execv(_PATH_USRBIN_NEWGRP, p);
-    blkfree((Char **) p);
+    blkxfree((Char **) p);
     untty();
     xexit(1);
 }
@@ -483,7 +483,7 @@ gotolab(Char *lab)
     /*
      * Eliminate loops which were exited.
      */
-    wfree();
+    wxfree();
 }
 
 /*ARGSUSED*/
@@ -921,7 +921,7 @@ search(int type, int level, Char *goal)
 		    wp = whyles;
 		    if (wp) {
 			    whyles = wp->w_next;
-			    wpfree(wp);
+			    wpxfree(wp);
 		    }
 		}
 	    }
@@ -978,7 +978,7 @@ search(int type, int level, Char *goal)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
-	    freelex(ohistent);
+	    xfreelex(ohistent);
 	    xfree(ohistent);
 	} else
 	    (void) getword(NULL);
@@ -1213,20 +1213,20 @@ toend(void)
     else {
 	bseek(&whyles->w_end);
     }
-    wfree();
+    wxfree();
 }
 
 static void
-wpfree(struct whyle *wp)
+wpxfree(struct whyle *wp)
 {
 	if (wp->w_fe0)
-	    blkfree(wp->w_fe0);
+	    blkxfree(wp->w_fe0);
 	xfree(wp->w_fename);
 	xfree(wp);
 }
 
 void
-wfree(void)
+wxfree(void)
 {
     struct Ain    o;
     struct whyle *nwp;
@@ -1258,7 +1258,7 @@ wfree(void)
 #endif /* FDEBUG */
 
 	/*
-	 * XXX: We free loops that have different seek types.
+	 * XXX: We xfree loops that have different seek types.
 	 */
 	if (wp->w_end.type != TCSH_I_SEEK && wp->w_start.type == wp->w_end.type &&
 	    wp->w_start.type == o.type) {
@@ -1274,7 +1274,7 @@ wfree(void)
 	    }
 	}
 
-	wpfree(wp);
+	wpxfree(wp);
     }
 }
 
@@ -1499,7 +1499,7 @@ dosetenv(Char **v, struct command *c)
 	int     k;
 
 # ifdef SETLOCALEBUG
-	dont_free = 1;
+	dont_xfree = 1;
 # endif /* SETLOCALEBUG */
 	(void) setlocale(LC_ALL, "");
 # ifdef LC_COLLATE
@@ -1519,12 +1519,12 @@ dosetenv(Char **v, struct command *c)
 	nlsinit();
 # endif /* NLS_CATALOGS */
 # ifdef SETLOCALEBUG
-	dont_free = 0;
+	dont_xfree = 0;
 # endif /* SETLOCALEBUG */
 # ifdef STRCOLLBUG
 	fix_strcoll_bug();
 # endif /* STRCOLLBUG */
-	tw_cmd_free();	/* since the collation sequence has changed */
+	tw_cmd_xfree();	/* since the collation sequence has changed */
 	for (k = 0200; k <= 0377 && !Isprint(CTL_ESC(k)); k++)
 	    continue;
 	AsciiOnly = MB_CUR_MAX == 1 && k > 0377;
@@ -1714,7 +1714,7 @@ dounsetenv(Char **v, struct command *c)
 		    int     k;
 
 # ifdef SETLOCALEBUG
-		    dont_free = 1;
+		    dont_xfree = 1;
 # endif /* SETLOCALEBUG */
 		    (void) setlocale(LC_ALL, "");
 # ifdef LC_COLLATE
@@ -1731,12 +1731,12 @@ dounsetenv(Char **v, struct command *c)
 		    nlsinit();
 # endif /* NLS_CATALOGS */
 # ifdef SETLOCALEBUG
-		    dont_free = 0;
+		    dont_xfree = 0;
 # endif /* SETLOCALEBUG */
 # ifdef STRCOLLBUG
 		    fix_strcoll_bug();
 # endif /* STRCOLLBUG */
-		    tw_cmd_free();/* since the collation sequence has changed */
+		    tw_cmd_xfree();/* since the collation sequence has changed */
 		    for (k = 0200; k <= 0377 && !Isprint(CTL_ESC(k)); k++)
 			continue;
 		    AsciiOnly = MB_CUR_MAX == 1 && k > 0377;
@@ -1834,7 +1834,7 @@ tsetenv(const Char *name, const Char *val)
 	xfree(*ep);
 	*ep = strip(Strspl(name, cp));
 	xfree(cp);
-	blkfree((Char **) environ);
+	blkxfree((Char **) environ);
 	environ = short2blk(STR_environ);
 	return;
     }
@@ -1843,7 +1843,7 @@ tsetenv(const Char *name, const Char *val)
     xfree(cp);
     blk[1] = 0;
     STR_environ = blkspl(STR_environ, blk);
-    blkfree((Char **) environ);
+    blkxfree((Char **) environ);
     environ = short2blk(STR_environ);
     xfree(oep);
 #endif /* SETENV_IN_LIB */
@@ -1867,7 +1867,7 @@ Unsetenv(Char *name)
 	cp = *ep;
 	*ep = 0;
 	STR_environ = blkspl(STR_environ, ep + 1);
-	blkfree((Char **) environ);
+	blkxfree((Char **) environ);
 	environ = short2blk(STR_environ);
 	*ep = cp;
 	xfree(cp);
@@ -2902,7 +2902,7 @@ dofunction(Char **v, struct command *c)
     set1(strip(Sgoal), saveblk(blk), &aliases, VAR_READWRITE);
     cleanup_until(blk);
     cleanup_until(&strtmp);
-    tw_cmd_free();
+    tw_cmd_xfree();
 }
 
 void
@@ -2953,7 +2953,7 @@ getwhole(struct Strbuf *line)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
-	    freelex(ohistent);
+	    xfreelex(ohistent);
 	    xfree(ohistent);
 	}
 	cleanup_until(&buf);
@@ -2978,7 +2978,7 @@ getwhole(struct Strbuf *line)
 	ohistent->prev = histgetword(histent);
 	ohistent->prev->next = ohistent;
 	savehist(ohistent, 0);
-	freelex(ohistent);
+	xfreelex(ohistent);
 	xfree(ohistent);
     } else
 	(void) getword(NULL);
