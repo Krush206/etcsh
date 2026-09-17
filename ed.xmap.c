@@ -140,7 +140,7 @@ XmapStr(CStr *str)
 }
 
 /* ResetXmap():
- *	Takes all nodes on Xmap and puts them on free list.  Then
+ *	Takes all nodes on Xmap and puts them on xfree list.  Then
  *	initializes Xmap with arrow keys
  */
 void
@@ -373,7 +373,7 @@ TryDeleteNode(XmapNode **inptr, CStr *str)
 }
 
 /* PutFreeNode():
- *	Puts a tree of nodes onto free list using free(3).
+ *	Puts a tree of nodes onto xfree list using xfree(3).
  */
 static void
 PutFreeNode(XmapNode *ptr)
