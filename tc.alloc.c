@@ -1,5 +1,7 @@
 #include "sh.h"
 
+int dont_free = 0;
+
 struct Memory (*mem)[MEM_MAX];
 
 static struct Memory *memsrch(void *);
