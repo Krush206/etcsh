@@ -118,7 +118,7 @@ dosched(Char **v, struct command *c)
 	if (count)
 	    stderror(ERR_SCHEDEV);
 	*pp = tp->t_next;
-	blkxfree(tp->t_lex);
+	blkfree(tp->t_lex);
 	xfree(tp);
 	return;
     }
@@ -226,7 +226,7 @@ sched_run(void)
 	lastword->next = &cmd;
 	cmd.prev = lastword;
 	sched_ptr = tp->t_next;	/* looping termination cond: */
-	blkxfree(tp->t_lex);	/* straighten out in case of */
+	blkfree(tp->t_lex);	/* straighten out in case of */
 	xfree(tp);		/* command blow-up. */
 
 	cleanup_push(&cmd, lex_cleanup);
