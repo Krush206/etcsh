@@ -660,8 +660,8 @@ glob3(struct strbuf *pathbuf, const Char *pattern, const Char *restpattern,
  * Extend the gl_pathv member of a glob_t structure to accomodate a new item,
  * add the new item, and update gl_pathc.
  *
- * This assumes the BSD xrealloc, which only copies the block when its size
- * crosses a power-of-two boundary; for v7 xrealloc, this would cause quadratic
+ * This assumes the BSD realloc, which only copies the block when its size
+ * crosses a power-of-two boundary; for v7 realloc, this would cause quadratic
  * behavior.
  *
  * Return 0 if new item added, error code if memory couldn't be allocated.
@@ -783,9 +783,9 @@ match(const char *name, const Char *pat, const Char *patend, int m_not)
     return 1;
 }
 
-/* xfree allocated data belonging to a glob_t structure */
+/* free allocated data belonging to a glob_t structure */
 void
-globxfree(glob_t *pglob)
+globfree(glob_t *pglob)
 {
     int i;
     char **pp;
