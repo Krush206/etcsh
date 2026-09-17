@@ -275,7 +275,7 @@ doalias(Char **v, struct command *c)
 	    stderror(ERR_NAME | ERR_DANGER);
 	}
 	set1(strip(p), saveblk(v), &aliases, VAR_READWRITE);
-	tw_cmd_xfree();
+	tw_cmd_free();
     }
 }
 
@@ -285,7 +285,7 @@ unalias(Char **v, struct command *c)
 {
     USE(c);
     unset1(v, &aliases);
-    tw_cmd_xfree();
+    tw_cmd_free();
 }
 
 /*ARGSUSED*/
@@ -1499,7 +1499,7 @@ dosetenv(Char **v, struct command *c)
 	int     k;
 
 # ifdef SETLOCALEBUG
-	dont_xfree = 1;
+	dont_free = 1;
 # endif /* SETLOCALEBUG */
 	(void) setlocale(LC_ALL, "");
 # ifdef LC_COLLATE
@@ -1519,12 +1519,12 @@ dosetenv(Char **v, struct command *c)
 	nlsinit();
 # endif /* NLS_CATALOGS */
 # ifdef SETLOCALEBUG
-	dont_xfree = 0;
+	dont_free = 0;
 # endif /* SETLOCALEBUG */
 # ifdef STRCOLLBUG
 	fix_strcoll_bug();
 # endif /* STRCOLLBUG */
-	tw_cmd_xfree();	/* since the collation sequence has changed */
+	tw_cmd_free();	/* since the collation sequence has changed */
 	for (k = 0200; k <= 0377 && !Isprint(CTL_ESC(k)); k++)
 	    continue;
 	AsciiOnly = MB_CUR_MAX == 1 && k > 0377;
@@ -1714,7 +1714,7 @@ dounsetenv(Char **v, struct command *c)
 		    int     k;
 
 # ifdef SETLOCALEBUG
-		    dont_xfree = 1;
+		    dont_free = 1;
 # endif /* SETLOCALEBUG */
 		    (void) setlocale(LC_ALL, "");
 # ifdef LC_COLLATE
@@ -1731,12 +1731,12 @@ dounsetenv(Char **v, struct command *c)
 		    nlsinit();
 # endif /* NLS_CATALOGS */
 # ifdef SETLOCALEBUG
-		    dont_xfree = 0;
+		    dont_free = 0;
 # endif /* SETLOCALEBUG */
 # ifdef STRCOLLBUG
 		    fix_strcoll_bug();
 # endif /* STRCOLLBUG */
-		    tw_cmd_xfree();/* since the collation sequence has changed */
+		    tw_cmd_free();/* since the collation sequence has changed */
 		    for (k = 0200; k <= 0377 && !Isprint(CTL_ESC(k)); k++)
 			continue;
 		    AsciiOnly = MB_CUR_MAX == 1 && k > 0377;
@@ -2902,7 +2902,7 @@ dofunction(Char **v, struct command *c)
     set1(strip(Sgoal), saveblk(blk), &aliases, VAR_READWRITE);
     cleanup_until(blk);
     cleanup_until(&strtmp);
-    tw_cmd_xfree();
+    tw_cmd_free();
 }
 
 void
