@@ -61,7 +61,7 @@ static	struct wordent	*histgetword	(struct wordent *);
 static	void	toend		(void);
 static	void	xecho		(int, Char **);
 static	int	islocale_var	(Char *);
-static	void	wpxfree		(struct whyle *);
+static	void	wpfree		(struct whyle *);
 static	int	srchenc		(struct CommandList *);
 static	int	getwhole	(struct Strbuf *);
 
@@ -338,7 +338,7 @@ donewgrp(Char **v, struct command *c)
      */
     (void) execv(_PATH_BIN_NEWGRP, p);
     (void) execv(_PATH_USRBIN_NEWGRP, p);
-    blkxfree((Char **) p);
+    blkfree((Char **) p);
     untty();
     xexit(1);
 }
@@ -483,7 +483,7 @@ gotolab(Char *lab)
     /*
      * Eliminate loops which were exited.
      */
-    wxfree();
+    wfree();
 }
 
 /*ARGSUSED*/
@@ -921,7 +921,7 @@ search(int type, int level, Char *goal)
 		    wp = whyles;
 		    if (wp) {
 			    whyles = wp->w_next;
-			    wpxfree(wp);
+			    wpfree(wp);
 		    }
 		}
 	    }
@@ -978,7 +978,7 @@ search(int type, int level, Char *goal)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
-	    xfreelex(ohistent);
+	    freelex(ohistent);
 	    xfree(ohistent);
 	} else
 	    (void) getword(NULL);
@@ -1213,20 +1213,20 @@ toend(void)
     else {
 	bseek(&whyles->w_end);
     }
-    wxfree();
+    wfree();
 }
 
 static void
-wpxfree(struct whyle *wp)
+wpfree(struct whyle *wp)
 {
 	if (wp->w_fe0)
-	    blkxfree(wp->w_fe0);
+	    blkfree(wp->w_fe0);
 	xfree(wp->w_fename);
 	xfree(wp);
 }
 
 void
-wxfree(void)
+wfree(void)
 {
     struct Ain    o;
     struct whyle *nwp;
@@ -1274,7 +1274,7 @@ wxfree(void)
 	    }
 	}
 
-	wpxfree(wp);
+	wpfree(wp);
     }
 }
 
@@ -1834,7 +1834,7 @@ tsetenv(const Char *name, const Char *val)
 	xfree(*ep);
 	*ep = strip(Strspl(name, cp));
 	xfree(cp);
-	blkxfree((Char **) environ);
+	blkfree((Char **) environ);
 	environ = short2blk(STR_environ);
 	return;
     }
@@ -1843,7 +1843,7 @@ tsetenv(const Char *name, const Char *val)
     xfree(cp);
     blk[1] = 0;
     STR_environ = blkspl(STR_environ, blk);
-    blkxfree((Char **) environ);
+    blkfree((Char **) environ);
     environ = short2blk(STR_environ);
     xfree(oep);
 #endif /* SETENV_IN_LIB */
@@ -1867,7 +1867,7 @@ Unsetenv(Char *name)
 	cp = *ep;
 	*ep = 0;
 	STR_environ = blkspl(STR_environ, ep + 1);
-	blkxfree((Char **) environ);
+	blkfree((Char **) environ);
 	environ = short2blk(STR_environ);
 	*ep = cp;
 	xfree(cp);
@@ -2953,7 +2953,7 @@ getwhole(struct Strbuf *line)
 	    ohistent->prev = histgetword(histent);
 	    ohistent->prev->next = ohistent;
 	    savehist(ohistent, 0);
-	    xfreelex(ohistent);
+	    freelex(ohistent);
 	    xfree(ohistent);
 	}
 	cleanup_until(&buf);
@@ -2978,7 +2978,7 @@ getwhole(struct Strbuf *line)
 	ohistent->prev = histgetword(histent);
 	ohistent->prev->next = ohistent;
 	savehist(ohistent, 0);
-	xfreelex(ohistent);
+	freelex(ohistent);
 	xfree(ohistent);
     } else
 	(void) getword(NULL);
