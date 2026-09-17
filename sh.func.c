@@ -1098,13 +1098,14 @@ past:
 static int
 getword(struct Strbuf *wp)
 {
-    int found = 0, first;
+    int found = 0, first, e;
     eChar c, d;
 
     if (wp)
 	wp->len = 0;
     c = readc(1);
     d = 0;
+    e = 0;
     do {
 	while (c == ' ' || c == '\t')
 	    c = readc(1);
@@ -1123,11 +1124,17 @@ getword(struct Strbuf *wp)
 	found = 1;
 	first = 1;
 	do {
+	    e = (c == '\\');
 	    c = readc(1);
-	    if (d && c == '\\')
-		unreadc(c);
-	    if (c == '\\' && (c = readc(1)) == '\n')
-		c = ' ';
+	    if (c == '\\' && !e) {
+		if ((c = readc(1)) == '\n') {
+		    e = 1;
+		    c = ' ';
+		} else {
+		    unreadc(c);
+		    c = '\\';
+		}
+	    }
 	    if (c == '\'' || c == '"') {
 		if (d == 0)
 		    d = c;
@@ -1258,7 +1265,7 @@ wfree(void)
 #endif /* FDEBUG */
 
 	/*
-	 * XXX: We xfree loops that have different seek types.
+	 * XXX: We free loops that have different seek types.
 	 */
 	if (wp->w_end.type != TCSH_I_SEEK && wp->w_start.type == wp->w_end.type &&
 	    wp->w_start.type == o.type) {
