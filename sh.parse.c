@@ -37,7 +37,7 @@
 static	int		 asyntax (struct wordent *, struct wordent *);
 static	int		 asyn0 	 (struct wordent *, struct wordent *);
 static	int		 asyn3	 (struct wordent *, struct wordent *);
-static	struct wordent	*freenod (struct wordent *, struct wordent *);
+static	struct wordent	*xfreenod (struct wordent *, struct wordent *);
 static	struct command	*syn0	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn1	 (const struct wordent *, const struct wordent *, int);
 static	struct command	*syn1a	 (const struct wordent *, const struct wordent *, int);
@@ -157,7 +157,7 @@ asyn3(struct wordent *p1, struct wordent *p2)
     redid = lex(&alout);
     cleanup_until(&alvec);
     if (seterr) {
-	freelex(&alout);
+	xfreelex(&alout);
 	stderror(ERR_OLD);
     }
     if (p1->word[0] && eq(p1->word, alout.next->word)) {
@@ -166,7 +166,7 @@ asyn3(struct wordent *p1, struct wordent *p2)
 	alout.next->word = Strspl(STRQNULL, cp);
 	xfree(cp);
     }
-    p1 = freenod(p1, redid ? p2 : p1->next);
+    p1 = xfreenod(p1, redid ? p2 : p1->next);
     if (alout.next != &alout) {
 	p1->next->prev = alout.prev->prev;
 	alout.prev->prev->next = p1->next;
@@ -179,7 +179,7 @@ asyn3(struct wordent *p1, struct wordent *p2)
 }
 
 static struct wordent *
-freenod(struct wordent *p1, struct wordent *p2)
+xfreenod(struct wordent *p1, struct wordent *p2)
 {
     struct wordent *retp = p1->prev;
 
@@ -664,7 +664,7 @@ again:
 }
 
 void
-freesyn(struct command *t)
+xfreesyn(struct command *t)
 {
     Char **v;
 
@@ -680,7 +680,7 @@ freesyn(struct command *t)
 	xfree(t->t_drit);
 	break;
     case NODE_PAREN:
-	freesyn(t->t_dspr);
+	xfreesyn(t->t_dspr);
 	xfree(t->t_dlef);
 	xfree(t->t_drit);
 	break;
@@ -689,7 +689,7 @@ freesyn(struct command *t)
     case NODE_OR:
     case NODE_PIPE:
     case NODE_LIST:
-	freesyn(t->t_dcar), freesyn(t->t_dcdr);
+	xfreesyn(t->t_dcar), xfreesyn(t->t_dcdr);
 	break;
     default:
 	break;
@@ -706,7 +706,7 @@ syntax_cleanup(void *xt)
     struct command *t;
 
     t = xt;
-    freesyn(t);
+    xfreesyn(t);
 }
 
 void
