@@ -1110,7 +1110,7 @@ fntmp_cleanup(void *xptr)
 	ptr->next->prev = ptr->prev;
 	ptr = ptr->next;
 	if (tmp->vec0 != NULL) {
-	    blkxfree(tmp->vec0);
+	    blkfree(tmp->vec0);
 	    tmp->enc->vec0 = NULL;
 	}
 	xfree(tmp->label);
@@ -1585,7 +1585,7 @@ doltmp_cleanup(void *xptr)
 	ptr->prev->next = ptr->next;
 	ptr->next->prev = ptr->prev;
 	ptr = ptr->next;
-	blkxfree(tmp->t->t_dcom);
+	blkfree(tmp->t->t_dcom);
 	tmp->t->t_dcom = tmp->sav;
 	xfree(tmp);
     }
