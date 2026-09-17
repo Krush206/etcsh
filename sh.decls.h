@@ -67,7 +67,7 @@ extern	void		  dochngd	(Char **, struct command *);
 extern	Char		 *dnormalize	(const Char *, int);
 extern	void		  dopushd	(Char **, struct command *);
 extern	void		  dopopd	(Char **, struct command *);
-extern	void		  dxfree		(struct directory *);
+extern	void		  dfree		(struct directory *);
 extern	void		  dsetstack	(void);
 extern	const Char	 *getstakd	(int);
 extern	void		  recdirs	(Char *, int);
@@ -185,7 +185,7 @@ extern const struct biltins *isbfunc	(struct command *);
 extern	void		  prvars	(void);
 extern	int		  srchx		(Char *);
 extern	void		  unalias	(Char **, struct command *);
-extern	void		  wxfree		(void);
+extern	void		  wfree		(void);
 extern	void		  dobuiltins	(Char **, struct command *);
 extern	void		  reexecute	(struct command *);
 extern  int		  getYN		(const char *);
@@ -247,7 +247,7 @@ extern	void		  btoeof	(void);
 extern	void		  copylex	(struct wordent *, struct wordent *);
 extern	Char		 *domod		(Char *, Char);
 extern	void		  initlex	(struct wordent *);
-extern	void		  xfreelex	(struct wordent *);
+extern	void		  freelex	(struct wordent *);
 extern	int		  lex		(struct wordent *);
 extern	void		  lex_cleanup	(void *);
 extern	void		  prlex		(struct wordent *);
@@ -262,7 +262,7 @@ extern	ssize_t		  wide_read	(int, Char *, size_t, int);
  */
 extern	int		  any		(const char *, Char);
 extern	Char		**blkcpy	(Char **, Char **);
-extern	void		  blkxfree	(Char **);
+extern	void		  blkfree	(Char **);
 extern	void		  blk_cleanup	(void *);
 extern	void		  blk_indirect_cleanup(void *);
 extern	int		  blklen	(Char **);
@@ -308,14 +308,14 @@ extern	ssize_t		  xread		(int, void *, size_t);
 extern	int		  xtcsetattr	(int, int, const struct termios *);
 extern	ssize_t		  xwrite	(int, const void *, size_t);
 extern	int		  blkcmp	(Char **, Char **);
-extern	void		  blkcmpxfree	(Char **, Char **);
+extern	void		  blkcmpfree	(Char **, Char **);
 extern	void		  blkcmp_cleanup(void *);
 
 /*
  * sh.parse.c
  */
 extern	void		  alias		(struct wordent *);
-extern	void		  xfreesyn	(struct command *);
+extern	void		  freesyn	(struct command *);
 extern struct command 	 *syntax	(const struct wordent *,
 					 const struct wordent *, int);
 extern	void		  syntax_cleanup(void *);
