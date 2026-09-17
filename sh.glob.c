@@ -398,7 +398,7 @@ handleone(Char *str, Char **vl, int action)
     switch (action) {
     case G_ERROR:
 	setname(short2str(str));
-	blkxfree(vl);
+	blkfree(vl);
 	stderror(ERR_NAME | ERR_AMBIG);
 	break;
     case G_APPEND:
@@ -412,11 +412,11 @@ handleone(Char *str, Char **vl, int action)
 	    *strp++ = ' ';
 	}
 	*--strp = '\0';
-	blkxfree(vl);
+	blkfree(vl);
 	break;
     case G_IGNORE:
 	str = Strsave(strip(*vl));
-	blkxfree(vl);
+	blkfree(vl);
 	break;
     default:
 	break;
@@ -790,7 +790,7 @@ backeval(struct blk_buf *bb, struct Strbuf *word, Char *cp, int literal)
 		seterr = NULL;
 	    }
 
-	    xfreelex(&paraml1);
+	    freelex(&paraml1);
 	    (void) lex(&paraml1);
 	    cleanup_push(&paraml1, lex_cleanup);
 	    if (seterr)
