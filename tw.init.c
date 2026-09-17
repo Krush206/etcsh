@@ -613,7 +613,7 @@ tw_logname_next(struct Strbuf *res, struct Strbuf *dir, int *flags)
      * We don't want to get interrupted inside getpwent()
      * because the yellow pages code is not interruptible,
      * and if we call endpwent() immediatetely after
-     * (in pintr()) we may be xfreeing an invalid pointer
+     * (in pintr()) we may be freeing an invalid pointer
      */
     USE(flags);
     USE(dir);
@@ -679,7 +679,7 @@ tw_grpname_next(struct Strbuf *res, struct Strbuf *dir, int *flags)
      * We don't want to get interrupted inside getgrent()
      * because the yellow pages code is not interruptible,
      * and if we call endgrent() immediatetely after
-     * (in pintr()) we may be xfreeing an invalid pointer
+     * (in pintr()) we may be freeing an invalid pointer
      */
     USE(flags);
     USE(dir);
@@ -773,14 +773,14 @@ tw_dir_end(void)
 } /* end tw_dir_end */
 
 
-/* tw_item_xfree():
+/* tw_item_free():
  *	Free the item list
  */
 void
-tw_item_xfree(void)
+tw_item_free(void)
 {
     tw_str_free(&tw_item);
-} /* end tw_item_xfree */
+} /* end tw_item_free */
 
 
 /* tw_item_get():
