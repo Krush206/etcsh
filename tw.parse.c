@@ -1524,7 +1524,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
      * bugfix by Marty Grossman (grossman@CC5.BBN.COM): directory listing can
      * dump core when interrupted
      */
-    tw_item_xfree();
+    tw_item_free();
 
     non_unique_match = FALSE;	/* See the recexact code below */
 
@@ -1806,7 +1806,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
 
     case LIST:
 	tw_list_items(exp_dir.s, looking, numitems, list_max);
-	tw_item_xfree();
+	tw_item_free();
 	break;
 
     case SPELL:
