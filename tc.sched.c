@@ -239,7 +239,7 @@ sched_run(void)
 	    stderror(ERR_OLD);
 	/* execute the parse tree. */
 	execute(t, -1, NULL, NULL, TRUE);
-	/* done. xfree the lex list and parse tree. */
+	/* done. free the lex list and parse tree. */
 	cleanup_until(&cmd);
     }
     if (GettingInput && !just_signaled) {	/* PWP */
