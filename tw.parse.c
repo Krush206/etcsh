@@ -125,7 +125,7 @@ static	void 	 tw_fixword		(int, struct Strbuf *, Char *, Char *);
 static	void	 tw_list_items		(const Char *, int, int, int);
 static 	void	 add_scroll_tab		(Char *);
 static 	void 	 choose_scroll_tab	(struct Strbuf *, int);
-static	void	 free_scroll_tab	(void);
+static	void	 xfree_scroll_tab	(void);
 static	int	 find_rows		(Char *[], int, int);
 
 #ifdef notdef
@@ -969,7 +969,7 @@ tw_collect_items(COMMAND command, int looking, struct Strbuf *exp_dir,
 	    if (Strcmp(*cp, STRalways) == 0
 		|| (Strcmp(*cp, STRcorrect) == 0 && command == SPELL)
 		|| (Strcmp(*cp, STRcomplete) == 0 && command != SPELL)) {
-		tw_cmd_free();
+		tw_cmd_xfree();
 		tw_cmd_start(NULL, NULL);
 		break;
 	    }
@@ -1214,7 +1214,7 @@ tw_collect_items(COMMAND command, int looking, struct Strbuf *exp_dir,
 	    numitems = 1;
 	}
     }
-    free_scroll_tab();
+    xfree_scroll_tab();
 
     if (command == SPELL)
 	return d;
@@ -1524,7 +1524,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
      * bugfix by Marty Grossman (grossman@CC5.BBN.COM): directory listing can
      * dump core when interrupted
      */
-    tw_item_free();
+    tw_item_xfree();
 
     non_unique_match = FALSE;	/* See the recexact code below */
 
@@ -1806,7 +1806,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
 
     case LIST:
 	tw_list_items(exp_dir.s, looking, numitems, list_max);
-	tw_item_free();
+	tw_item_xfree();
 	break;
 
     case SPELL:
@@ -2398,7 +2398,7 @@ choose_scroll_tab(struct Strbuf *exp_name, int cnt)
 }
 
 static void
-free_scroll_tab(void)
+xfree_scroll_tab(void)
 {
     struct scroll_tab_list *loop;
 
