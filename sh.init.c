@@ -43,7 +43,6 @@ const struct biltins bfunc[] = {
     { ":",		dozip,		0,	INF	},
     { "@",		dolet,		0,	INF	},
     { "alias",		doalias,	0,	INF	},
-    { "alloc",		showall,	0,	1	},
 #if defined(_CX_UX)
     { "att",		doatt,		0,	INF	},
 #endif /* _CX_UX */
@@ -944,7 +943,7 @@ mesginit(void)
     /* SX-4 */
     if (mesg[SIGFRZ].pname == NULL) {
 	mesg[SIGFRZ].iname = "FRZ";
-	mesg[SIGFRZ].pname = CSAVS(2, 93, "system freeze");
+	mesg[SIGFRZ].pname = CSAVS(2, 93, "system xfreeze");
     }
 #endif /* SIGFRZ */
 
@@ -952,7 +951,7 @@ mesginit(void)
     /* SX-4 */
     if (mesg[SIGDFRZ].pname == NULL) {
 	mesg[SIGDFRZ].iname = "DFRZ";
-	mesg[SIGDFRZ].pname = CSAVS(2, 94, "system defreeze");
+	mesg[SIGDFRZ].pname = CSAVS(2, 94, "system dexfreeze");
     }
 #endif /* SIGDFRZ */
 
