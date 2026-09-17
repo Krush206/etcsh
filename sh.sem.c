@@ -78,7 +78,7 @@ struct CommandList doltmp = { NULL,
 struct CommandList *dolptr = &doltmp;
 
 #ifdef VFORK
-static	void		vfxfree		(int);
+static	void		vffree		(int);
 #endif
 static	Char		*splicepipe	(struct command *, Char *);
 static	void		 doio		(struct command *, int *, int *);
@@ -600,7 +600,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 			    (void) signal(SIGQUIT, SIG_IGN);
 			}
 			else {
-			    (void) signal(SIGINT, vfxfree);
+			    (void) signal(SIGINT, vffree);
 			    (void) signal(SIGQUIT, SIG_DFL);
 			}
 # ifdef BSDJOBS
@@ -832,7 +832,7 @@ execute(struct command *t, volatile int wanttty, int *pipein, int *pipeout,
 #ifdef VFORK
 static void
 /*ARGSUSED*/
-vfxfree(int snum)
+vffree(int snum)
 {
     USE(snum);
 
