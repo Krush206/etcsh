@@ -95,7 +95,7 @@ extern	 int		  tw_job_next		(struct Strbuf *,
 extern	 int		  tw_grpname_next	(struct Strbuf *,
 						 struct Strbuf *, int *);
 extern	 void		  tw_dir_end		(void);
-extern	 void		  tw_cmd_xfree		(void);
+extern	 void		  tw_cmd_free		(void);
 extern	 void		  tw_logname_end	(void);
 extern	 void		  tw_grpname_end	(void);
 extern	 void		  tw_item_add		(const struct Strbuf *);
