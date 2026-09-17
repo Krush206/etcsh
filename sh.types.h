@@ -117,7 +117,7 @@ extern void perror();
 extern void _exit();
 extern void abort();
 extern void qsort();
-extern void xfree();
+extern void free();
 extern unsigned int alarm();
 extern unsigned int sleep();
 # endif /* HPUXVERSION < 1100 */
