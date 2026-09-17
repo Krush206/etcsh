@@ -329,7 +329,7 @@ dolist(Char **v, struct command *c)
 	/* alias(&cmd); */
 	/* execute the parse tree. */
 	execute(t, tpgrp > 0 ? tpgrp : -1, NULL, NULL, FALSE);
-	/* done. xfree the lex list and parse tree. */
+	/* done. free the lex list and parse tree. */
 	cleanup_until(&cmd);
 	if (setintr)
 	    cleanup_until(&pintr_disabled);
@@ -1533,7 +1533,7 @@ gethomedir(const Char *us)
 	    }
 	}
 	for (res1 = res; *res1; res1++)
-	    xfree(*res1);
+	    free(*res1);
 #if 0
 	/* Don't return if root */
 	if (rp != NULL && rp[0] == '/' && rp[1] == '\0') {
