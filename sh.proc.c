@@ -120,7 +120,7 @@ static int timesdone;	/* shtimes buffer full ? */
 
 static	void		 pflushall	(void);
 static	void		 pflush		(struct process *);
-static	void		 pxfree		(struct process *);
+static	void		 pfree		(struct process *);
 static	void		 pclrcurr	(struct process *);
 static	void		 morecommand	(size_t);
 static	void		 padd		(struct command *);
@@ -442,7 +442,7 @@ pnote(void)
 
 
 static void
-pxfree(struct process *pp)
+pfree(struct process *pp)
 {
     xfree(pp->p_command);
     if (pp->p_cwd && --pp->p_cwd->di_count == 0)
@@ -467,7 +467,7 @@ pwait(void)
     for (pp = (fp = &proclist)->p_next; pp != NULL; pp = (fp = pp)->p_next)
 	if (pp->p_procid == 0) {
 	    fp->p_next = pp->p_next;
-	    pxfree(pp);
+	    pfree(pp);
 	    pp = fp;
 	}
     pjwait(pcurrjob);
@@ -659,7 +659,7 @@ pflushall(void)
 
 /*
  * pflush - flag all process structures in the same job as the
- *	the argument process for deletion.  The actual xfree of the
+ *	the argument process for deletion.  The actual free of the
  *	space is not done here since pflush is called at interrupt level.
  */
 static void
@@ -1097,18 +1097,18 @@ pprint(struct process *pp, int flag)
 			    && (reason != SIGPIPE
 				|| (pp->p_flags & PPOU) == 0))) {
 			char *ptr;
-			int xfree_ptr;
+			int free_ptr;
 
-			xfree_ptr = 0;
+			free_ptr = 0;
 			ptr = (char *)(intptr_t)mesg[pp->p_reason & 0177].pname;
 			if (ptr == NULL) {
 			    ptr = xasprintf("%s %d", CGETS(17, 5, "Signal"),
 					    pp->p_reason & 0177);
 			    cleanup_push(ptr, xfree);
-			    xfree_ptr = 1;
+			    free_ptr = 1;
 			}
 			xprintf(format, ptr);
-			if (xfree_ptr != 0)
+			if (free_ptr != 0)
 			    cleanup_until(ptr);
 		    }
 		    else
