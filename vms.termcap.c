@@ -2,7 +2,7 @@
  *	termcap.c	1.1	20/7/87		agc	Joypace Ltd
  *
  *	Copyright Joypace Ltd, London, UK, 1987. All rights reserved.
- *	This file may be freely distributed provided that this notice
+ *	This file may be xfreely distributed provided that this notice
  *	remains attached.
  *
  *	A public domain implementation of the termcap(3) routines.
