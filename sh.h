@@ -317,28 +317,9 @@ typedef long tcsh_number_t;
 
 #if defined(POSIX) && !defined(WINNT_NATIVE)
 # include <unistd.h>
+#endif
 
-/*
- * the gcc+protoize version of <stdlib.h>
- * redefines malloc(), so we define the following
- * to avoid it.
- */
-# if defined(SYSMALLOC) || defined(__linux__) || defined(__GNU__) || defined(__GLIBC__) || defined(sgi) || defined(_OSD_POSIX) || defined(__OpenBSD__)
-#  define NO_FIX_MALLOC
-#  include <stdlib.h>
-# else /* glibc */
-#  define _GNU_STDLIB_H
-#  define malloc __malloc
-#  define free __free
-#  define calloc __calloc
-#  define realloc __realloc
-#  include <stdlib.h>
-#  undef malloc
-#  undef free
-#  undef calloc
-#  undef realloc
-# endif /* glibc || sgi */
-#endif /* POSIX && !WINNT_NATIVE */
+#include <stdlib.h>
 #include <limits.h>
 
 #if SYSVREL > 0 || defined(_IBMR2) || defined(_MINIX) || defined(__linux__) || defined(__GNU__) || defined(__GLIBC__)
@@ -485,7 +466,7 @@ typedef union {
 }      *memalign_t;
 
 # define malloc		lint_malloc
-# define free		lint_free
+# define xfree		lint_xfree
 # define realloc	lint_realloc
 # define calloc		lint_calloc
 #endif
@@ -1197,8 +1178,6 @@ EXTERN Char   *STR_WORD_CHARS;
 EXTERN Char   *STR_WORD_CHARS_VI;
 EXTERN Char  **STR_environ IZERO;
 
-extern int     dont_free;	/* Tell free that we are in danger if we free */
-
 extern Char    *INVPTR;
 extern Char    **INVPPTR;
 
@@ -1317,9 +1296,8 @@ struct Memory {
     size_t size;
     int use;
     void *alloc;
-    void *buf[BUF_MAX];
+    unsigned char buf[BUF_MAX];
     struct Memory *next;
-    struct Memory *prev;
 };
 
 extern struct CommandList fntmp;
@@ -1328,7 +1306,7 @@ extern struct CommandList *fnptr;
 extern struct CommandList doltmp;
 extern struct CommandList *dolptr;
 
-extern struct Memory (*mem)[];
+extern struct Memory (*mem)[MEM_MAX];
 
 #include "sh.decls.h"
 /*
