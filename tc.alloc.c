@@ -68,11 +68,36 @@ xmalloc(size_t size)
 static struct Memory *
 memsrch(void *ptr)
 {
-    struct Memory *pool;
+    int high;
+    int low;
+    uintptr_t memstart;
+    uintptr_t memend;
+    uintptr_t target;
 
-    for (pool = (*mem)->next; pool != *mem; pool = pool->next)
-	if (pool->buf == ptr)
+    memstart = (uintptr_t) *mem;
+    memend = (uintptr_t) &(*mem)[MEM_MAX];
+    target = (uintptr_t) ptr;
+    if (target < memstart || target >= memend)
+	return NULL;
+    low = 0;
+    high = MEM_MAX - 1;
+    while (low <= high) {
+	int mid;
+	struct Memory *pool;
+	uintptr_t bufstart;
+	uintptr_t bufend;
+
+	mid = low + (high - low) / 2;
+	pool = &(*mem)[mid];
+	bufstart = (uintptr_t) pool->buf;
+	bufend = bufstart + BUF_MAX;
+	if (target >= bufstart && target < bufend)
 	    return pool;
+	if (target < bufstart)
+	    high = mid - 1;
+	else
+	    low = mid + 1;
+    }
     return NULL;
 }
 
