@@ -194,7 +194,7 @@ update_vars(Char *vp)
 	dsetstack();
     }
     else if (eq(vp, STRrecognize_only_executables)) {
-	tw_cmd_free();
+	tw_cmd_xfree();
     }
     else if (eq(vp, STRkillring)) {
 	SetKillRing((int)getn(varval(vp)));
@@ -714,10 +714,10 @@ set1(const Char *var, Char **vec, struct varent *head, int flags)
 	if (gflag) {
 	    vec = globall(oldv, gflag);
 	    if (vec == NULL) {
-		blkfree(oldv);
+		blkxfree(oldv);
 		stderror(ERR_NAME | ERR_NOMATCH);
 	    }
-	    blkfree(oldv);
+	    blkxfree(oldv);
 	}
     }
     /*
@@ -785,7 +785,7 @@ setq(const Char *name, Char **vec, struct varent *p, int flags)
 	    (f = Strcmp(name, c->v_name)) == 0) {
 	    if (c->v_flags & VAR_READONLY)
 		stderror(ERR_READONLY|ERR_NAME, c->v_name);
-	    blkfree(c->vec);
+	    blkxfree(c->vec);
 	    c->v_flags = flags;
 	    trim(c->vec = vec);
 	    return;
@@ -858,7 +858,7 @@ unset(Char **v, struct command *c)
     if (adrof(STRvimode) == 0)
 	VImode = 0;
     if (did_roe && adrof(STRrecognize_only_executables) == 0)
-	tw_cmd_free();
+	tw_cmd_xfree();
     if (adrof(STRhistory) == 0)
 	sethistory(0);
 #ifdef COLOR_LS_F
@@ -912,7 +912,7 @@ unsetv1(struct varent *p)
     /*
      * Free associated memory first to avoid complications.
      */
-    blkfree(p->vec);
+    blkxfree(p->vec);
     xfree(p->v_name);
     /*
      * If p is missing one child, then we can move the other into where p is.
