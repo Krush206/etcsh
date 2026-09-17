@@ -234,7 +234,7 @@ dodirs(Char **v, struct command *c)
 	    fdp = dp;
 	    dp = dp->di_next;
 	    if (fdp != &dhead)
-		dfree(fdp);
+		dxfree(fdp);
 	}
 	dhead.di_next = dhead.di_prev = dp;
 	dp->di_next = dp->di_prev = &dhead;
@@ -514,7 +514,7 @@ dochngd(Char **v, struct command *c)
 	    stderror(ERR_SYSTEM, tmp, strerror(errno));
 	dcwd->di_prev->di_next = dcwd->di_next;
 	dcwd->di_next->di_prev = dcwd->di_prev;
-	dfree(dcwd);
+	dxfree(dcwd);
 	dnewcwd(dp, dflag);
 	return;
     }
@@ -528,7 +528,7 @@ dochngd(Char **v, struct command *c)
     dp->di_prev = dcwd->di_prev;
     dp->di_prev->di_next = dp;
     dp->di_next->di_prev = dp;
-    dfree(dcwd);
+    dxfree(dcwd);
     dnewcwd(dp, dflag);
 }
 
@@ -831,7 +831,7 @@ dopopd(Char **v, struct command *c)
     }
     dp->di_prev->di_next = dp->di_next;
     dp->di_next->di_prev = dp->di_prev;
-    dfree(dp);
+    dxfree(dp);
     if (dp == dcwd) {
         dnewcwd(p, dflag);
     }
@@ -841,10 +841,10 @@ dopopd(Char **v, struct command *c)
 }
 
 /*
- * dfree - free the directory (or keep it if it still has ref count)
+ * dxfree - xfree the directory (or keep it if it still has ref count)
  */
 void
-dfree(struct directory *dp)
+dxfree(struct directory *dp)
 {
 
     if (dp->di_count != 0) {
@@ -864,7 +864,7 @@ dcanon(Char *cp, Char *p)
 {
     cleanup_push(cp, xfree);
     p = dcanon_internal(cp, p);
-    // coverity[use_after_free] we use the pointer as a marker
+    // coverity[use_after_xfree] we use the pointer as a marker
     cleanup_ignore(cp);
     cleanup_until(cp);
     return p;
@@ -1201,7 +1201,7 @@ dnewcwd(struct directory *dp, int dflag)
 	    if (dn != dp && Strcmp(dn->di_name, dp->di_name) == 0) {
 		dn->di_next->di_prev = dn->di_prev;
 		dn->di_prev->di_next = dn->di_next;
-		dfree(dn);
+		dxfree(dn);
 		break;
 	    }
     }
@@ -1235,7 +1235,7 @@ dsetstack(void)
 	dn->di_next->di_prev = dn->di_prev;
 	dn->di_prev->di_next = dn->di_next;
 	if (dn != dcwd)
-	    dfree(dn);
+	    dxfree(dn);
     }
 
     /* thread the current working directory */
