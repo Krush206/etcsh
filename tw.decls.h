@@ -100,7 +100,7 @@ extern	 void		  tw_logname_end	(void);
 extern	 void		  tw_grpname_end	(void);
 extern	 void		  tw_item_add		(const struct Strbuf *);
 extern	 Char	        **tw_item_get		(void);
-extern	 void		  tw_item_xfree		(void);
+extern	 void		  tw_item_free		(void);
 extern	 Char		 *tw_item_find		(Char *);
 
 /*
