@@ -92,4 +92,14 @@ xfree(void *ptr)
 void
 showall(Char **v, struct command *c)
 {
+    struct Memory *pool;
+    unsigned int i;
+
+    USE(v);
+    USE(c);
+    i = 0;
+    for (pool = (*mem)->next; pool != *mem; pool = pool->next)
+	if (pool->use)
+	    i++;
+    xprintf("%u pools in use.\n", i);
 }
