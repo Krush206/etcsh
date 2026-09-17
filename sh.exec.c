@@ -202,7 +202,7 @@ doexec(struct command *t, int do_glob)
     else
 	av = saveblk(av);
 
-    blkxfree(t->t_dcom);
+    blkfree(t->t_dcom);
     cleanup_ignore(pv);
     cleanup_until(pv);
     t->t_dcom = blkspl(pv, av);
@@ -393,7 +393,7 @@ texec(Char *sf, Char **st)
 #ifdef VFORK
     Vt = 0;
 #endif /* VFORK */
-    blkxfree((Char **) t);
+    blkfree((Char **) t);
     switch (errno) {
 
     case ENOEXEC:
@@ -478,7 +478,7 @@ texec(Char *sf, Char **st)
 	t = short2blk(st);
 	f = short2str(sf);
 	xfree(st);
-	blkxfree((Char **) vp);
+	blkfree((Char **) vp);
 #ifdef VFORK
 	Vt = t;
 #endif /* VFORK */
@@ -492,7 +492,7 @@ texec(Char *sf, Char **st)
 #ifdef VFORK
 	Vt = 0;
 #endif /* VFORK */
-	blkxfree((Char **) t);
+	blkfree((Char **) t);
 	/* The sky is falling, the sky is falling! */
 	stderror(ERR_SYSTEM, f, strerror(errno));
 	break;
