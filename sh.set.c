@@ -194,7 +194,7 @@ update_vars(Char *vp)
 	dsetstack();
     }
     else if (eq(vp, STRrecognize_only_executables)) {
-	tw_cmd_xfree();
+	tw_cmd_free();
     }
     else if (eq(vp, STRkillring)) {
 	SetKillRing((int)getn(varval(vp)));
@@ -858,7 +858,7 @@ unset(Char **v, struct command *c)
     if (adrof(STRvimode) == 0)
 	VImode = 0;
     if (did_roe && adrof(STRrecognize_only_executables) == 0)
-	tw_cmd_xfree();
+	tw_cmd_free();
     if (adrof(STRhistory) == 0)
 	sethistory(0);
 #ifdef COLOR_LS_F
