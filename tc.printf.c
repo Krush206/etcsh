@@ -1,6 +1,6 @@
 /*
  * tc.printf.c: A public-domain, minimal printf/sprintf routine that prints
- *	       through the putchar() routine.  Feel free to use for
+ *	       through the putchar() routine.  Feel xfree to use for
  *	       anything...  -- 7/17/87 Paul Placeway
  */
 /*-
