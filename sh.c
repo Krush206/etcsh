@@ -2042,7 +2042,7 @@ process(int catch)
 	 */
 	if (setintr)
 	    pintr_push_enable(&old_pintr_disabled);
-	xfreelex(&paraml);
+	freelex(&paraml);
 	hadhist = lex(&paraml);
 	if (setintr)
 	    cleanup_until(&old_pintr_disabled);
@@ -2125,7 +2125,7 @@ process(int catch)
 	 * would rewind t on the chdir error, and xfree the rest of the command
 	 */
 	if (seterr) {
-	    xfreesyn(t);
+	    freesyn(t);
 	    stderror(ERR_OLD);
 	}
 
@@ -2135,7 +2135,7 @@ process(int catch)
 	 * <mlschroe@immd4.informatik.uni-erlangen.de> was execute(t, tpgrp);
 	 */
 	execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
-	xfreesyn(t);
+	freesyn(t);
 
 	/*
 	 * Made it!
@@ -2548,7 +2548,6 @@ xballoc(void)
     while (++new != &(*mem)[MEM_MAX]) {
 	new->use = 0;
 	new->size = 0;
-	new->alloc = NULL;
 	new->next = *mem;
 	past->next = new;
 	past = new;
