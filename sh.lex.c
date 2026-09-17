@@ -165,7 +165,7 @@ lex(struct wordent *hp)
     cleanup_push(hp, lex_cleanup);
     wdp = hp;
     /*
-     * The following loop is written so that the links needed by xfreelex will
+     * The following loop is written so that the links needed by freelex will
      * be ready and rarin to go even if it is interrupted.
      */
     do {
@@ -265,7 +265,7 @@ initlex(struct wordent *vp)
 }
 
 void
-xfreelex(struct wordent *vp)
+freelex(struct wordent *vp)
 {
     struct wordent *fp;
 
@@ -284,7 +284,7 @@ lex_cleanup(void *xvp)
     struct wordent *vp;
 
     vp = xvp;
-    xfreelex(vp);
+    freelex(vp);
 }
 
 static Char *
@@ -1870,7 +1870,7 @@ btoeof(void)
     alvecp = NULL;
     evalvec = NULL;
     evalp = NULL;
-    wxfree();
+    wfree();
     bxfree();
 }
 
