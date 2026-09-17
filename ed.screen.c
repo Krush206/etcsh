@@ -419,10 +419,10 @@ ReBufferDisplay(void)
 
     b = Display;
     Display = NULL;
-    blkfree(b);
+    blkxfree(b);
     b = Vdisplay;
     Vdisplay = NULL;
-    blkfree(b);
+    blkxfree(b);
     TermH = Val(T_co);
     TermV = (INBUFSIZE * 4) / TermH + 1;/*FIXBUF*/
     b = xmalloc(sizeof(*b) * (TermV + 1));
