@@ -147,7 +147,7 @@ blkcat(Char **up, Char **vp)
 }
 
 void
-blkxfree(Char **av0)
+blkfree(Char **av0)
 {
     Char **av = av0;
 
@@ -161,7 +161,7 @@ blkxfree(Char **av0)
 void
 blk_cleanup(void *ptr)
 {
-    blkxfree(ptr);
+    blkfree(ptr);
 }
 
 void
@@ -170,7 +170,7 @@ blk_indirect_cleanup(void *xptr)
     Char ***ptr;
 
     ptr = xptr;
-    blkxfree(*ptr);
+    blkfree(*ptr);
     xfree(ptr);
 }
 
@@ -762,7 +762,7 @@ blkcmpxfree(Char **fb, Char **sb)
 
     if (fb != sb)
 	xfree(sb);
-    blkxfree(fb);
+    blkfree(fb);
 }
 
 void
