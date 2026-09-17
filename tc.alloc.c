@@ -43,7 +43,10 @@ xrealloc(void *ptr, size_t size)
 	xfree(new);
 	stderror(ERR_SILENT);
     }
-    (void) memcpy(new, ptr, pool->size);
+    if (pool->size < size)
+	(void) memcpy(new, ptr, pool->size);
+    else
+	(void) memcpy(new, ptr, size);
     xfree(ptr);
     return new;
 }
@@ -61,7 +64,7 @@ xmalloc(size_t size)
 	if (!pool->use) {
 	    pool->use = 1;
 	    pool->size = size;
-	    return pool->buf;
+	    return &pool->buf[BUF_MAX - size];
 	}
     stderror(ERR_NOMEM);
     return NULL;
