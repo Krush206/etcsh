@@ -2131,6 +2131,7 @@ process(int catch)
 	 * Execute the parse tree From: Michael Schroeder
 	 * <mlschroe@immd4.informatik.uni-erlangen.de> was execute(t, tpgrp);
 	 */
+	execute(t, (tpgrp > 0 ? tpgrp : -1), NULL, NULL, TRUE);
 	freesyn(t);
 
 	/*
