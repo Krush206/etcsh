@@ -202,7 +202,7 @@ doexec(struct command *t, int do_glob)
     else
 	av = saveblk(av);
 
-    blkfree(t->t_dcom);
+    blkxfree(t->t_dcom);
     cleanup_ignore(pv);
     cleanup_until(pv);
     t->t_dcom = blkspl(pv, av);
@@ -393,7 +393,7 @@ texec(Char *sf, Char **st)
 #ifdef VFORK
     Vt = 0;
 #endif /* VFORK */
-    blkfree((Char **) t);
+    blkxfree((Char **) t);
     switch (errno) {
 
     case ENOEXEC:
@@ -478,7 +478,7 @@ texec(Char *sf, Char **st)
 	t = short2blk(st);
 	f = short2str(sf);
 	xfree(st);
-	blkfree((Char **) vp);
+	blkxfree((Char **) vp);
 #ifdef VFORK
 	Vt = t;
 #endif /* VFORK */
@@ -492,7 +492,7 @@ texec(Char *sf, Char **st)
 #ifdef VFORK
 	Vt = 0;
 #endif /* VFORK */
-	blkfree((Char **) t);
+	blkxfree((Char **) t);
 	/* The sky is falling, the sky is falling! */
 	stderror(ERR_SYSTEM, f, strerror(errno));
 	break;
@@ -690,7 +690,7 @@ dohash(Char **vv, struct command *c)
 #endif /* FASTHASH */
 
     (void) getusername(NULL);	/* flush the tilde cashe */
-    tw_cmd_free();
+    tw_cmd_xfree();
     havhash = 1;
     if (v == NULL)
 	return;
@@ -938,7 +938,7 @@ tellmewhat(struct wordent *lexp, Char **str)
 	aliased = 1;
     }
 
-    s0.dest = &sp->word;	/* to get the memory freeing right... */
+    s0.dest = &sp->word;	/* to get the memory xfreeing right... */
     s0.val = sp->word;
     cleanup_push(&s0, tellmewhat_s0_cleanup);
 
