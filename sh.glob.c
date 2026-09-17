@@ -452,12 +452,12 @@ libglob(Char **vl)
 	ptr = short2qstr(*vl);
 	switch (glob(ptr, gflgs, 0, &globv)) {
 	case GLOB_ABEND:
-	    globxfree(&globv);
+	    globfree(&globv);
 	    setname(ptr);
 	    stderror(ERR_NAME | ERR_GLOB);
 	    /* NOTREACHED */
 	case GLOB_NOSPACE:
-	    globxfree(&globv);
+	    globfree(&globv);
 	    stderror(ERR_NOMEM);
 	    /* NOTREACHED */
 	default:
@@ -472,7 +472,7 @@ libglob(Char **vl)
     while (*++vl);
     vl = (globv.gl_pathc == 0 || (magic && !match && !nonomatch)) ?
 	NULL : blk2short(globv.gl_pathv);
-    globxfree(&globv);
+    globfree(&globv);
     return (vl);
 }
 
