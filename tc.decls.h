@@ -39,10 +39,10 @@ struct Strbuf;
 /*
  * tc.alloc.c
  */
-extern	void		  xfree		(void *);
 extern	void		 *xmalloc	(size_t);
-extern	void		 *xrealloc	(void *, size_t);
 extern	void		 *xcalloc	(size_t, size_t);
+extern	void		 *xrealloc	(void *, size_t);
+extern	void		  xfree		(void *);
 extern	void		  showall	(Char **, struct command *);
 
 /*
