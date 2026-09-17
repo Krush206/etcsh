@@ -612,7 +612,7 @@ bb_cleanup(void *xbb)
 }
 
 void
-bb_free(void *bb)
+bb_xfree(void *bb)
 {
     bb_cleanup(bb);
     xfree(bb);
@@ -698,7 +698,7 @@ STRBUF##_cleanup(void *xbuf)					\
 }								\
 								\
 void								\
-STRBUF##_free(void *xbuf)					\
+STRBUF##_xfree(void *xbuf)					\
 {								\
     STRBUF##_cleanup(xbuf);					\
     xfree(xbuf);						\
