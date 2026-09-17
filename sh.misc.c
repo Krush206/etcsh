@@ -147,7 +147,7 @@ blkcat(Char **up, Char **vp)
 }
 
 void
-blkfree(Char **av0)
+blkxfree(Char **av0)
 {
     Char **av = av0;
 
@@ -161,7 +161,7 @@ blkfree(Char **av0)
 void
 blk_cleanup(void *ptr)
 {
-    blkfree(ptr);
+    blkxfree(ptr);
 }
 
 void
@@ -170,7 +170,7 @@ blk_indirect_cleanup(void *xptr)
     Char ***ptr;
 
     ptr = xptr;
-    blkfree(*ptr);
+    blkxfree(*ptr);
     xfree(ptr);
 }
 
@@ -734,7 +734,7 @@ blkcmp(Char **fb, Char **sb)
 }
 
 void
-blkcmpfree(Char **fb, Char **sb)
+blkcmpxfree(Char **fb, Char **sb)
 {
     if (fb == NULL)
 	fb = xcalloc(1, sizeof *fb);
@@ -762,7 +762,7 @@ blkcmpfree(Char **fb, Char **sb)
 
     if (fb != sb)
 	xfree(sb);
-    blkfree(fb);
+    blkxfree(fb);
 }
 
 void
@@ -771,5 +771,5 @@ blkcmp_cleanup(void *xblks)
     Char **(*blks)[2];
 
     blks = xblks;
-    blkcmpfree(**blks, (*blks)[1]);
+    blkcmpxfree(**blks, (*blks)[1]);
 }
