@@ -75,8 +75,6 @@ extern int NLSMapsAreInited;
  * ported to Apple Unix (TM) (OREO)  26 -- 29 Jun 1987
  */
 
-struct Memory (*mem)[MEM_MAX];
-
 jmp_buf_t reslab IZERO_STRUCT;
 struct wordent paraml IZERO_STRUCT;
 
