@@ -714,10 +714,10 @@ set1(const Char *var, Char **vec, struct varent *head, int flags)
 	if (gflag) {
 	    vec = globall(oldv, gflag);
 	    if (vec == NULL) {
-		blkxfree(oldv);
+		blkfree(oldv);
 		stderror(ERR_NAME | ERR_NOMATCH);
 	    }
-	    blkxfree(oldv);
+	    blkfree(oldv);
 	}
     }
     /*
@@ -785,7 +785,7 @@ setq(const Char *name, Char **vec, struct varent *p, int flags)
 	    (f = Strcmp(name, c->v_name)) == 0) {
 	    if (c->v_flags & VAR_READONLY)
 		stderror(ERR_READONLY|ERR_NAME, c->v_name);
-	    blkxfree(c->vec);
+	    blkfree(c->vec);
 	    c->v_flags = flags;
 	    trim(c->vec = vec);
 	    return;
@@ -912,7 +912,7 @@ unsetv1(struct varent *p)
     /*
      * Free associated memory first to avoid complications.
      */
-    blkxfree(p->vec);
+    blkfree(p->vec);
     xfree(p->v_name);
     /*
      * If p is missing one child, then we can move the other into where p is.
