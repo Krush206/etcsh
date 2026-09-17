@@ -1201,8 +1201,8 @@ extern int	NoNLSRebind;
 extern char   **environ;
 #endif
 
-#define BUF_MAX (1024 * 256)
-#define MEM_MAX (1024 * 4)
+#define BUF_MAX (1024 * 128)
+#define MEM_MAX (1024 * 2)
 
 #include "tc.h"
 
