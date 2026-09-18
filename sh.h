@@ -1203,8 +1203,8 @@ extern int	NoNLSRebind;
 extern char   **environ;
 #endif
 
-#define BUF_MAX (1024 * 128)
-#define MEM_MAX (1024 * 2)
+#define BUF_MAX (1024 * 256)
+#define MEM_MAX (1024 * 4)
 
 #include "tc.h"
 
@@ -1308,6 +1308,7 @@ extern struct CommandList doltmp;
 extern struct CommandList *dolptr;
 
 extern struct Memory (*mem)[MEM_MAX];
+extern struct Memory *memfree;
 
 #include "sh.decls.h"
 /*
