@@ -3,6 +3,7 @@
 int dont_free = 0;
 
 struct Memory (*mem)[MEM_MAX];
+struct Memory *memfree;
 
 static struct Memory *memsrch(void *);
 
@@ -53,25 +54,6 @@ xrealloc(void *ptr, size_t size)
     return new;
 }
 
-void *
-xmalloc(size_t size)
-{
-    struct Memory *pool;
-
-    if (size == 0)
-	return NULL;
-    if (size >= BUF_MAX)
-	stderror(ERR_NOMEM);
-    for (pool = (*mem)->next; pool != *mem; pool = pool->next)
-	if (!pool->use) {
-	    pool->use = 1;
-	    pool->size = size;
-	    return &pool->buf[BUF_MAX - size];
-	}
-    stderror(ERR_NOMEM);
-    return NULL;
-}
-
 static struct Memory *
 memsrch(void *ptr)
 {
@@ -108,6 +90,24 @@ memsrch(void *ptr)
     return NULL;
 }
 
+void *
+xmalloc(size_t size)
+{
+    struct Memory *pool;
+
+    if (size == 0)
+	return NULL;
+    if (size >= BUF_MAX)
+	stderror(ERR_NOMEM);
+    if (memfree == NULL)
+	stderror(ERR_NOMEM);
+    pool = memfree;
+    memfree = pool->next;
+    pool->use = 1;
+    pool->size = size;
+    return &pool->buf[BUF_MAX - size];
+}
+
 void
 xfree(void *ptr)
 {
@@ -118,7 +118,11 @@ xfree(void *ptr)
     pool = memsrch(ptr);
     if (pool == NULL)
 	stderror(ERR_SILENT);
+    if (!pool->use)
+	return;
     pool->use = 0;
+    pool->next = memfree;
+    memfree = pool;
 }
 
 void
@@ -130,7 +134,7 @@ showall(Char **v, struct command *c)
     USE(v);
     USE(c);
     i = 0;
-    for (pool = (*mem)->next; pool != *mem; pool = pool->next)
+    for (pool = *mem; pool != &(*mem)[MEM_MAX]; pool++)
 	if (pool->use)
 	    i++;
     xprintf("%u pools in use.\n", i);
