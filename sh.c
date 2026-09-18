@@ -2536,17 +2536,15 @@ grabpgrp(int fd, pid_t desired)
 static void
 xballoc(void)
 {
-    struct Memory *new;
-    struct Memory *past;
+    int i;
 
     mem = malloc(sizeof *mem);
-    new = *mem;
-    past = *mem;
-    while (++new != &(*mem)[MEM_MAX]) {
-	new->use = 0;
-	new->size = 0;
-	new->next = *mem;
-	past->next = new;
-	past = new;
+    if (mem == NULL)
+	stderror(ERR_NOMEM);
+    for (i = 0; i < MEM_MAX; i++) {
+	(*mem)[i].use = 0;
+	(*mem)[i].size = 0;
+	(*mem)[i].next = memfree;
+	memfree = &(*mem)[i];
     }
 }
