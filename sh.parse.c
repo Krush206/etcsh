@@ -285,6 +285,7 @@ syn0(const struct wordent *p1, const struct wordent *p2, int flags)
 		p1->next = p2->prev;
 		goto out;
 	    }
+
 	default:
 	    break;
 	}
@@ -490,7 +491,7 @@ syn3(const struct wordent *p1, const struct wordent *p2, int flags)
     struct command *t;
     int l;
     Char  **av;
-    int     n, c;
+    int     n, len, c;
     int    specp = 0;
 
     if (p1 != p2) {
@@ -558,8 +559,8 @@ again:
     if (n < 0)
 	n = 0;
     t = xcalloc(1, sizeof(*t));
-    av = xcalloc(n + 1, sizeof(Char **));
-    t->t_dcom = av;
+    av = NULL;
+    len = n;
     n = 0;
     if (p2->word[0] == ')')
 	t->t_dflg = F_NOFORK;
@@ -643,8 +644,11 @@ again:
 	default:
 	    if (l != 0 && !specp)
 		continue;
-	    if (seterr == 0)
+	    if (seterr == 0) {
+		if (av == NULL)
+		    t->t_dcom = av = xcalloc(len + 1, sizeof(*av));
 		av[n] = Strsave(p->word);
+	    }
 	    n++;
 	    continue;
 	}
@@ -673,7 +677,7 @@ freesyn(struct command *t)
     switch (t->t_dtyp) {
 
     case NODE_COMMAND:
-	for (v = t->t_dcom; *v; v++)
+	for (v = t->t_dcom; v != NULL && *v; v++)
 	    xfree(*v);
 	xfree(t->t_dcom);
 	xfree(t->t_dlef);
