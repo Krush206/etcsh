@@ -43,7 +43,7 @@ const struct biltins bfunc[] = {
     { ":",		dozip,		0,	INF	},
     { "@",		dolet,		0,	INF	},
     { "alias",		doalias,	0,	INF	},
-    { "alloc",		showall,	0,	1	},
+    { "alloc",		showall,	0,	0	},
 #if defined(_CX_UX)
     { "att",		doatt,		0,	INF	},
 #endif /* _CX_UX */
