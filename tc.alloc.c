@@ -3,7 +3,7 @@
 int dont_free = 0;
 
 struct Memory (*mem)[MEM_MAX];
-struct Memory *memfree;
+struct Memory *memfree = NULL;
 
 static struct Memory *memsrch(void *);
 
@@ -134,7 +134,7 @@ showall(Char **v, struct command *c)
     USE(v);
     USE(c);
     i = 0;
-    for (pool = *mem; pool != &(*mem)[MEM_MAX]; pool++)
+    for (pool = *mem; pool < &(*mem)[MEM_MAX]; pool++)
 	if (pool->use)
 	    i++;
     xprintf("%u pools in use.\n", i);
